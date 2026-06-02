@@ -1,0 +1,21 @@
+// AI CONTEXT: Generated build header template for FallHook plugin identity.
+// Depends on CommonLibF4 REL::Version through the including precompiled header.
+// Runtime scope is Fallout 4 1.10.163 only; this file carries no version branching.
+// Source-free policy: plugin metadata must not expose text-matching modes.
+#pragma once
+
+#include <string_view>
+
+namespace Plugin
+{
+	using namespace std::literals;
+
+	inline constexpr REL::Version VERSION
+	{
+		@PROJECT_VERSION_MAJOR@u,
+		@PROJECT_VERSION_MINOR@u,
+		@PROJECT_VERSION_PATCH@u,
+	};
+
+	inline constexpr auto NAME = "@PROJECT_NAME@"sv;
+}
