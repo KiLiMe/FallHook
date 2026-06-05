@@ -13,6 +13,8 @@
 #include "110163/RuntimeDialogueChoiceTranslations.h"
 #include "110163/RuntimeDialogueDataApply.h"
 #include "110163/RuntimeDialogueResponseTranslations.h"
+#include "110163/RuntimeDialogueSubtitleContext.h"
+#include "110163/RuntimeDialogueSubtitleTranslations.h"
 #include "110163/RuntimeFormResolver.h"
 #include "110163/RuntimeFullNameLoadTranslations.h"
 #include "110163/RuntimeInventoryTemplateNames.h"
@@ -67,6 +69,7 @@ namespace
 
 	void rebuildRuntimeLookupMaps(const TranslationPreparedData& prepared, bool force)
 	{
+		RuntimeDialogueSubtitleContext::Clear();
 		{
 			RuntimeLoadWatchdog::ScopedPhase phase{ "RuntimeTextManager rebuild quest journal translations", 0.0 };
 			const auto started = std::chrono::steady_clock::now();
@@ -96,6 +99,12 @@ namespace
 			const auto started = std::chrono::steady_clock::now();
 			RuntimeDialogueResponseTranslations::Rebuild(prepared.dialogue, force);
 			logPhase("rebuild dialogue response translations", started);
+		}
+		{
+			RuntimeLoadWatchdog::ScopedPhase phase{ "RuntimeTextManager rebuild dialogue subtitle translations", 0.0 };
+			const auto started = std::chrono::steady_clock::now();
+			RuntimeDialogueSubtitleTranslations::Rebuild(prepared.dialogue, force);
+			logPhase("rebuild dialogue subtitle translations", started);
 		}
 		{
 			RuntimeLoadWatchdog::ScopedPhase phase{ "RuntimeTextManager rebuild XDI dialogue option translations", 0.0 };
@@ -233,6 +242,7 @@ namespace RuntimeTextManager
 		const bool sameCatalog = catalogResult == g_bootCatalogResult;
 		if (sameCatalog)
 		{
+			RuntimeDialogueSubtitleContext::Clear();
 			REX::INFO(
 				"{} save-load refresh reapplying cached mutable data: bootApplied=true sameCatalog=true cacheHit={} bootCacheHit={}.",
 				Plugin::NAME,

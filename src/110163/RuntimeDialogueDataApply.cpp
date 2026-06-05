@@ -271,7 +271,7 @@ namespace RuntimeDialogueDataApply
 		countMissingTargets(maps, stats);
 
 		REX::INFO(
-			"{} dialogue topic apply complete: topics={} missingForm={} wrongType={} emptyText={} topicMaps={} scannedForms={} topicForms={} duplicateInfos={} elapsedMs={:.2f}.",
+			"{} dialogue topic apply complete: topics={} missingForm={} wrongType={} emptyText={} topicMaps={} scannedForms={} topicForms={} elapsedMs={:.2f}.",
 			Plugin::NAME,
 			stats.topicsApplied,
 			stats.skippedMissingForm,
@@ -280,7 +280,6 @@ namespace RuntimeDialogueDataApply
 			maps.topicsByForm.size() + maps.topicsByEditor.size(),
 			forms.scannedForms,
 			forms.topics.size(),
-			forms.duplicateInfos,
 			elapsedMs(started));
 		return stats;
 	}

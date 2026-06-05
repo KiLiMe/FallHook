@@ -6,6 +6,7 @@
 #include "PCH.h"
 
 #include "111191/RuntimeTextStringAssign.h"
+#include "RE/B/BSFixedString.h"
 
 namespace Runtime111191
 {
@@ -20,17 +21,6 @@ namespace RuntimeTextStringAssign
 	{
 		auto& raw = reinterpret_cast<RE::BSFixedStringCS&>(target);
 		raw = text.empty() ? kEmptyText : text;
-	}
-
-	void AssignPlainFixedLocalized(RE::BGSLocalizedString& target, const RE::BSFixedStringCS& text)
-	{
-		auto& raw = reinterpret_cast<RE::BSFixedStringCS&>(target);
-		if (text.empty())
-		{
-			raw = kEmptyText;
-			return;
-		}
-		raw = text;
 	}
 
 	std::string NonEmptyString(std::string_view text)

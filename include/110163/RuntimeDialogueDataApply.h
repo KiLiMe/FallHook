@@ -15,7 +15,6 @@ namespace RuntimeDialogueDataApply
 		std::size_t skippedWrongType{ 0 };
 		std::size_t skippedEmptyText{ 0 };
 		std::size_t skippedMissingForm{ 0 };
-		std::size_t skippedInvalidTarget{ 0 };
 	};
 
 	ApplyStats Apply(const TranslationCatalogBuildResult& catalog);

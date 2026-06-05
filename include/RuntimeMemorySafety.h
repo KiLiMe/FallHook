@@ -33,21 +33,4 @@ namespace RuntimeMemorySafety
 		return value;
 	}
 
-	template <class T>
-	[[nodiscard]] bool WriteUnaligned(void* base, std::size_t offset, const T& value) noexcept
-	{
-		if (!base)
-		{
-			return false;
-		}
-
-		auto* target = reinterpret_cast<std::byte*>(base) + offset;
-		if (!IsWritableMemory(target, sizeof(T)))
-		{
-			return false;
-		}
-
-		std::memcpy(target, std::addressof(value), sizeof(T));
-		return true;
-	}
 }

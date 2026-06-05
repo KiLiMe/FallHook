@@ -13,7 +13,6 @@ namespace RuntimeInGameTextLog
 	void Configure(bool logRaw) noexcept;
 	[[nodiscard]] bool Enabled() noexcept;
 	[[nodiscard]] std::string FormatAddress(const void* address);
-	[[nodiscard]] std::string FormatCallStack(std::uint32_t skipFrames, std::uint32_t maxFrames);
 	void Hit(std::wstring_view raw, std::wstring_view text, std::wstring_view dest);
 	void Miss(std::wstring_view raw, std::wstring_view text);
 }

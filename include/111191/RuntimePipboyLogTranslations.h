@@ -30,5 +30,4 @@ namespace Runtime111191::RuntimePipboyLogTranslations
 
 	void Rebuild(const TranslationCatalogBuildResult& catalog);
 	[[nodiscard]] std::optional<LookupResult> LookupStatKey(std::string_view key);
-	[[nodiscard]] BuildStats GetLastBuildStats();
 }

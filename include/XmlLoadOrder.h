@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <span>
 #include <string>
-#include <string_view>
 #include <vector>
 
 namespace XmlLoadOrder
@@ -27,7 +26,5 @@ namespace XmlLoadOrder
 		std::uint32_t pluginPriority{ 0 };
 	};
 
-	Mode ParseMode(std::string_view value) noexcept;
-	std::string_view ModeName(Mode mode) noexcept;
 	std::vector<std::size_t> SortIndices(std::span<const SortEntry> entries, Mode mode);
 }

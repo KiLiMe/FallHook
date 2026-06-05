@@ -37,7 +37,6 @@ namespace
 	struct ApplyTotals
 	{
 		std::size_t appliedRules{ 0 };
-		std::size_t unchangedRules{ 0 };
 		std::size_t skippedRuntimeForm{ 0 };
 		std::size_t skippedSlotOutOfRange{ 0 };
 		std::size_t sidRemappedRules{ 0 };
@@ -271,12 +270,11 @@ namespace
 		}
 
 		REX::INFO(
-			"{} innr-translate trace stage=data-apply form={:08X} available={} applied={} unchanged={} missingRuntimeForm={} slotOutOfRange={} sidRemap={} sidMismatch={}",
+			"{} innr-translate trace stage=data-apply form={:08X} available={} applied={} missingRuntimeForm={} slotOutOfRange={} sidRemap={} sidMismatch={}",
 			Plugin::NAME,
 			formID,
 			available,
 			totals.appliedRules,
-			totals.unchangedRules,
 			totals.skippedRuntimeForm,
 			totals.skippedSlotOutOfRange,
 			totals.sidRemappedRules,
@@ -329,7 +327,6 @@ namespace
 		{
 			const auto formTotals = applyFormRules(formID, entries);
 			totals.appliedRules += formTotals.appliedRules;
-			totals.unchangedRules += formTotals.unchangedRules;
 			totals.skippedRuntimeForm += formTotals.skippedRuntimeForm;
 			totals.skippedSlotOutOfRange += formTotals.skippedSlotOutOfRange;
 			totals.sidRemappedRules += formTotals.sidRemappedRules;
@@ -341,7 +338,6 @@ namespace
 	void copyApplyTotals(RuntimeInstanceNamingTranslations::RebuildStats& stats, const ApplyTotals& totals)
 	{
 		stats.appliedRules = totals.appliedRules;
-		stats.unchangedRules = totals.unchangedRules;
 		stats.skippedRuntimeForm = totals.skippedRuntimeForm;
 		stats.skippedSlotOutOfRange = totals.skippedSlotOutOfRange;
 		stats.sidRemappedRules = totals.sidRemappedRules;
@@ -356,13 +352,12 @@ namespace
 		}
 
 		REX::INFO(
-			"{} innr-translate {}: accepted={} forms={} applied={} unchanged={} missingForm={} missingRuntimeForm={} missingSlot={} emptyText={} nonINNR={} slotOutOfRange={} sidRemap={} sidMismatch={}.",
+			"{} innr-translate {}: accepted={} forms={} applied={} missingForm={} missingRuntimeForm={} missingSlot={} emptyText={} nonINNR={} slotOutOfRange={} sidRemap={} sidMismatch={}.",
 			Plugin::NAME,
 			stage,
 			stats.accepted,
 			forms,
 			stats.appliedRules,
-			stats.unchangedRules,
 			stats.skippedMissingForm,
 			stats.skippedRuntimeForm,
 			stats.skippedMissingIndex,
@@ -388,7 +383,6 @@ namespace RuntimeInstanceNamingTranslations
 				g_traceLines.store(0, std::memory_order_relaxed);
 				auto stats = g_lastRebuildStats;
 				stats.appliedRules = 0;
-				stats.unchangedRules = 0;
 				stats.skippedRuntimeForm = 0;
 				stats.skippedSlotOutOfRange = 0;
 				stats.sidRemappedRules = 0;

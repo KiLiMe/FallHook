@@ -19,7 +19,6 @@ namespace RuntimeInventoryTemplateNames
 		std::size_t skippedMissingForm{ 0 };
 		std::size_t skippedWrongFormType{ 0 };
 		std::size_t skippedMissingTemplateItem{ 0 };
-		std::size_t skippedIndexOutOfRange{ 0 };
 		std::size_t skippedStringIDMismatch{ 0 };
 	};
 

@@ -5,8 +5,6 @@
 // Source-free policy: writes already-resolved destination text only; no lookup identity lives here.
 #pragma once
 
-#include "RE/B/BSFixedString.h"
-
 #include <string>
 #include <string_view>
 
@@ -21,7 +19,6 @@ namespace Runtime111191::RuntimeTextStringAssign
 
 	void AssignLocalized(RE::BGSLocalizedString& target, std::string_view text);
 	void AssignPlainLocalized(RE::BGSLocalizedString& target, std::string_view text);
-	void AssignPlainFixedLocalized(RE::BGSLocalizedString& target, const RE::BSFixedStringCS& text);
 
 	[[nodiscard]] std::string NonEmptyString(std::string_view text);
 }

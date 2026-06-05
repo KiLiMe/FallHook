@@ -61,5 +61,6 @@ struct SourceFreeTranslationData
 	std::optional<std::uint32_t> formID;
 	std::optional<std::uint32_t> index;
 	std::optional<std::uint32_t> stringID;
+	std::optional<std::uint32_t> responseID;
 	std::optional<std::string> editorID;
 };

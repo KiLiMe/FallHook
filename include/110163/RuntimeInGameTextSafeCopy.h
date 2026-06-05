@@ -11,5 +11,4 @@
 namespace RuntimeInGameTextSafeCopy
 {
 	[[nodiscard]] std::wstring Wide(const wchar_t* text, std::size_t limit = 2048);
-	[[nodiscard]] std::string Utf8(const char* text, std::size_t limit = 8192);
 }

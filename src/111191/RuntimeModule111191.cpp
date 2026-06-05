@@ -11,6 +11,7 @@
 #include "111191/RuntimeDescriptionHook.h"
 #include "111191/RuntimeDialogueButtonHook.h"
 #include "111191/RuntimeDialogueResponseHook.h"
+#include "111191/RuntimeDialogueSubtitleHook.h"
 #include "111191/RuntimeFullNameLoadHook.h"
 #include "111191/RuntimeHudRolloverHook.h"
 #include "RuntimeInGameTextDictionary.h"
@@ -52,7 +53,7 @@ namespace
 
 		{
 			RuntimeLoadWatchdog::ScopedPhase phase{ "F4SEPluginLoad InGameText TXT dictionary load", 0.0 };
-			[[maybe_unused]] const auto inGameTextLoadStats = RuntimeInGameTextDictionary::LoadFromDisk(inGameTextSettings.enable);
+			static_cast<void>(RuntimeInGameTextDictionary::LoadFromDisk(inGameTextSettings.enable));
 		}
 		{
 			RuntimeLoadWatchdog::ScopedPhase phase{ "F4SEPluginLoad RuntimeInGameTextHook::Install", 0.0 };
@@ -73,6 +74,10 @@ namespace
 		{
 			RuntimeLoadWatchdog::ScopedPhase phase{ "F4SEPluginLoad RuntimeDialogueResponseHook::Install", 0.0 };
 			RuntimeDialogueResponseHook::Install();
+		}
+		{
+			RuntimeLoadWatchdog::ScopedPhase phase{ "F4SEPluginLoad RuntimeDialogueSubtitleHook::Install", 0.0 };
+			RuntimeDialogueSubtitleHook::Install();
 		}
 		{
 			RuntimeLoadWatchdog::ScopedPhase phase{ "F4SEPluginLoad RuntimeDialogueButtonHook::Install", 0.0 };
@@ -103,7 +108,7 @@ namespace
 		REX::INFO("{} AVIF:ANAM const apply is enabled with staged trace.", Plugin::NAME);
 		REX::INFO("{} QUST:CNAM journal hook is enabled for 1.11.191 with TESQuestStageItem::GetLogEntry.", Plugin::NAME);
 		REX::INFO("{} BPTD:BPTN body-part names use source-free plugin BPND.type slots and const data mutation.", Plugin::NAME);
-		REX::INFO("{} dialogue uses boot data-level DIAL:FULL mutation; INFO:RNAM choices use BGSSceneActionPlayerDialogue context plus DialogueMenuUtils::SetButtonText; INFO:NAM1 stays on DialogueResponse construction.", Plugin::NAME);
+		REX::INFO("{} INFO:RNAM dialogue choices use BGSSceneActionPlayerDialogue context plus DialogueMenuUtils::SetButtonText only; DIAL:FULL remains data-level and INFO:NAM1 response hooks capture identity while SubtitleManager performs spoken-text replacement.", Plugin::NAME);
 		REX::INFO("{} XDI DialogueMenu choices use a source-free GetDialogueOptions option wrapper when XDI is present.", Plugin::NAME);
 		REX::INFO("{} HUDRollover action replacement uses moved ShowRollover ID 2221994, ACTI/FURN primary slot +8, PERK EPF2 secondary slot +10, and parameter copy ID 2222029.", Plugin::NAME);
 		REX::INFO("{} REGN:RDMP region map-data mutation uses TESRegionDataList::Find ID 2196228.", Plugin::NAME);

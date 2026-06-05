@@ -21,7 +21,6 @@ namespace RuntimeTextStringAssign
 
 	void AssignLocalized(RE::BGSLocalizedString& target, std::string_view text);
 	void AssignPlainLocalized(RE::BGSLocalizedString& target, std::string_view text);
-	void AssignPlainFixedLocalized(RE::BGSLocalizedString& target, const RE::BSFixedStringCS& text);
 
 	[[nodiscard]] std::string NonEmptyString(std::string_view text);
 }

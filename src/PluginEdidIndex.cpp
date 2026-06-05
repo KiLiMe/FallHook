@@ -310,11 +310,6 @@ void PluginEdidIndex::parseRange(std::span<const std::uint8_t> data, std::size_t
 			++m_recordsScanned;
 			parseRecord(signature, readU32(data, offset + 12), flags, data.subspan(recordDataBegin, size));
 		}
-		else
-		{
-			++m_recordsSkipped;
-		}
-
 		offset = recordDataEnd;
 	}
 }
@@ -421,15 +416,16 @@ void PluginEdidIndex::parseRecord(std::string_view signature, RawFormID rawFormI
 		{
 			addIndexedValue(m_questStageLogStringIDToIndex, rawFormID, readU32(payload, 0), *currentStageIndex + currentStageItemIndex);
 		}
-		else if (signature == "INFO" && subSig == "TRDT" && payload.size() > 12)
+		else if (signature == "INFO" && subSig == "TRDA" && payload.size() >= 8)
 		{
-			pendingResponseID = payload[12];
+			pendingResponseID = readU32(payload, 4);
 		}
 		else if (signature == "INFO" && subSig == "NAM1" && payload.size() == sizeof(std::uint32_t))
 		{
 			if (pendingResponseID && *pendingResponseID != 0)
 			{
 				addIndexedValue(m_infoResponseIDToIndex, rawFormID, *pendingResponseID, responseOrdinal);
+				addIndexedValue(m_infoResponseIndexToID, rawFormID, responseOrdinal + 1, *pendingResponseID);
 			}
 			pendingResponseID.reset();
 			addIndexedValue(m_infoResponseStringIDToIndex, rawFormID, readU32(payload, 0), responseOrdinal++);

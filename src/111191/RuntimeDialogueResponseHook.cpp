@@ -1,8 +1,8 @@
-// AI CONTEXT: Hooks dialogue response construction for lazy INFO:NAM1 spoken-line mutation.
-// Depends on RuntimeDialogueResponseTranslations, RuntimeHookWatch, and RuntimePrologueHook.
+// AI CONTEXT: Hooks DialogueResponse construction to resolve selected INFO:NAM1 text and feed subtitle identity.
+// Depends on RuntimeDialogueResponseTranslations, RuntimeDialogueSubtitleContext, and RuntimePrologueHook.
 // Runtime scope is Fallout 4 1.11.191 dialogue response construction only.
 // Version-specific logic: installs the guarded 1.11.191 DialogueResponse constructor offset fallback.
-// Source-free policy: delegates to source-free response maps; no visible/source text matching.
+// Source-free policy: resolves only by INFO/response identity and never matches Source text.
 #include "PCH.h"
 
 #include "111191/RuntimeDialogueResponseHook.h"
@@ -10,8 +10,8 @@
 #include "RuntimeActivityWatch.h"
 #include "RuntimeHookWatch.h"
 #include "RuntimePrologueHook.h"
-#include "RuntimeSaveLoadGapTrace.h"
 #include "111191/RuntimeDialogueResponseTranslations.h"
+#include "111191/RuntimeDialogueSubtitleContext.h"
 
 #include "RE/D/DialogueResponse.h"
 #include "RE/T/TESTopic.h"
@@ -49,16 +49,29 @@ namespace
 		RE::TESResponse* response,
 		RE::TESQuest* quest)
 	{
-		RuntimeSaveLoadGapTrace::ScopedHook gapTrace{ "DialogueResponse::DialogueResponse" };
 		RuntimeHookWatch::ScopedCall watch{ g_ctorWatch, "DialogueResponse::DialogueResponse" };
 		auto* result = g_dialogueResponseCtor(out, topic, topicInfo, speaker, response, quest);
 		if (!result)
 		{
 			result = out;
 		}
-		RuntimeActivityWatch::RunWork(
-			"DialogueResponse apply constructed response",
-			[&]() { (void)RuntimeDialogueResponseTranslations::ApplyConstructedResponse(result, topicInfo, response); });
+		if (result && topicInfo && response && !result->text.empty())
+		{
+			RuntimeActivityWatch::RunWork("DialogueResponse capture subtitle context", [&]() {
+				const auto rawText = result->text;
+				const auto resolved = RuntimeDialogueResponseTranslations::ResolveResponse(topic, topicInfo, response);
+				if (resolved.translated && !resolved.text.empty())
+				{
+					RuntimeDialogueSubtitleContext::Remember(
+						topicInfo,
+						speaker,
+						rawText,
+						resolved.text,
+						resolved.ordinal,
+						resolved.responseID);
+				}
+			});
+		}
 		return result;
 	}
 

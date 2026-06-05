@@ -16,9 +16,7 @@ namespace RuntimeInstanceNamingTranslations
 		std::size_t skippedEmptyText{ 0 };
 		std::size_t skippedMissingIndex{ 0 };
 		std::size_t skippedMissingForm{ 0 };
-		std::size_t skippedWrongFormType{ 0 };
 		std::size_t appliedRules{ 0 };
-		std::size_t unchangedRules{ 0 };
 		std::size_t skippedRuntimeForm{ 0 };
 		std::size_t skippedSlotOutOfRange{ 0 };
 		std::size_t sidRemappedRules{ 0 };

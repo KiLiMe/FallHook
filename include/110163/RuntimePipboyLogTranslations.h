@@ -19,16 +19,6 @@ namespace RuntimePipboyLogTranslations
 		const char* text{ nullptr };
 	};
 
-	struct BuildStats
-	{
-		std::size_t catalogRecords{ 0 };
-		std::size_t accepted{ 0 };
-		std::size_t skippedWrongType{ 0 };
-		std::size_t skippedMissingEditorID{ 0 };
-		std::size_t skippedEmptyText{ 0 };
-	};
-
 	void Rebuild(const TranslationCatalogBuildResult& catalog);
 	[[nodiscard]] std::optional<LookupResult> LookupStatKey(std::string_view key);
-	[[nodiscard]] BuildStats GetLastBuildStats();
 }

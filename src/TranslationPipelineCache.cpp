@@ -13,7 +13,7 @@
 namespace
 {
 	constexpr std::uint64_t kMagic = 0x3143484350484C46ull;
-	constexpr std::uint32_t kVersion = 11;
+	constexpr std::uint32_t kVersion = 14;
 	constexpr std::uint64_t kMaxRecords = 2'000'000;
 	constexpr std::uint32_t kMaxString = 32 * 1024 * 1024;
 
@@ -161,6 +161,7 @@ namespace
 			writeOptionalU32(output, data.formID) &&
 			writeOptionalU32(output, data.index) &&
 			writeOptionalU32(output, data.stringID) &&
+			writeOptionalU32(output, data.responseID) &&
 			writeOptionalString(output, data.editorID);
 	}
 
@@ -175,6 +176,7 @@ namespace
 		return readOptionalU32(input, data.formID) &&
 			readOptionalU32(input, data.index) &&
 			readOptionalU32(input, data.stringID) &&
+			readOptionalU32(input, data.responseID) &&
 			readOptionalString(input, data.editorID);
 	}
 

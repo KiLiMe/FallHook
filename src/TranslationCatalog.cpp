@@ -142,6 +142,19 @@ namespace
 		return RuntimeResolution::GetSemanticIndex(entry, type);
 	}
 
+	std::optional<std::uint32_t> resolveInfoResponseID(
+		const TranslationCatalogFile& file,
+		std::optional<std::uint32_t> formID,
+		std::optional<std::uint32_t> index,
+		std::string_view recordSignature)
+	{
+		if (!file.pluginIndex || !formID || !index || recordSignature != "INFO NAM1")
+		{
+			return std::nullopt;
+		}
+		return file.pluginIndex->lookupInfoResponseID(*formID, *index);
+	}
+
 	SourceFreeTranslationKey makeIdentity(
 		const TranslationCatalogFile& file,
 		const XmlTranslationEntry& entry,
@@ -192,6 +205,7 @@ namespace
 		data.formID = key.formID;
 		data.index = key.index;
 		data.stringID = key.stringID;
+		data.responseID = resolveInfoResponseID(file, key.formID, key.index, recordSignature);
 		data.editorID = editorIdentity(entry);
 
 		return TranslationCatalogRecord{

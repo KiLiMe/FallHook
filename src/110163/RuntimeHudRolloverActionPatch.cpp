@@ -141,14 +141,14 @@ namespace
 		RuntimeActivityWatch::WorkScope activity{ "HUDRollover activation lookup" };
 		if (auto* base = formByID(context.base))
 		{
-			if (auto text = RuntimeActivationTextTranslations::Lookup(base, std::nullopt); text && !text->empty())
+			if (auto text = RuntimeActivationTextTranslations::Lookup(base); text && !text->empty())
 			{
 				return text;
 			}
 		}
 		if (auto* ref = formByID(context.ref))
 		{
-			if (auto text = RuntimeActivationTextTranslations::Lookup(ref, std::nullopt); text && !text->empty())
+			if (auto text = RuntimeActivationTextTranslations::Lookup(ref); text && !text->empty())
 			{
 				return text;
 			}

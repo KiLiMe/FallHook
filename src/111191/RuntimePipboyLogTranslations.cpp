@@ -19,7 +19,6 @@ namespace
 	std::mutex g_lock;
 	std::unordered_map<std::string, std::string> g_byEditorID;
 	std::unordered_map<std::string, std::string> g_aliasEditorID;
-	RuntimePipboyLogTranslations::BuildStats g_lastStats;
 
 	std::string lower(std::string_view value)
 	{
@@ -194,7 +193,6 @@ namespace RuntimePipboyLogTranslations
 			++stats.accepted;
 		}
 
-		g_lastStats = stats;
 		if (RuntimeApplySettings::Load().TraceEnabled())
 		{
 			REX::INFO(
@@ -247,12 +245,6 @@ namespace RuntimePipboyLogTranslations
 			return lookupEditorID(*alias);
 		}
 		return std::nullopt;
-	}
-
-	BuildStats GetLastBuildStats()
-	{
-		std::scoped_lock lock{ g_lock };
-		return g_lastStats;
 	}
 }
 

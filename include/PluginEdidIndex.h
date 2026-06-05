@@ -24,11 +24,8 @@ public:
 	static std::uint32_t SignatureKey(std::string_view signature) noexcept;
 
 	[[nodiscard]] bool loaded() const noexcept { return m_loaded; }
-	[[nodiscard]] std::size_t entries() const noexcept { return m_edidToRawFormID.size(); }
-	[[nodiscard]] std::size_t ambiguousEntries() const noexcept { return m_ambiguousKeys.size(); }
 	[[nodiscard]] std::size_t recordsVisited() const noexcept { return m_recordsVisited; }
 	[[nodiscard]] std::size_t recordsScanned() const noexcept { return m_recordsScanned; }
-	[[nodiscard]] std::size_t recordsSkipped() const noexcept { return m_recordsSkipped; }
 	[[nodiscard]] std::size_t compressedRecords() const noexcept { return m_compressedRecords; }
 	[[nodiscard]] std::size_t failedCompressedRecords() const noexcept { return m_failedCompressedRecords; }
 
@@ -37,6 +34,7 @@ public:
 	[[nodiscard]] std::optional<std::uint32_t> lookupQuestStageLogIndex(RawFormID rawQuestFormID, std::uint32_t stringID) const;
 	[[nodiscard]] std::optional<std::uint32_t> lookupInfoResponseIndex(RawFormID rawInfoFormID, std::uint32_t stringID) const;
 	[[nodiscard]] std::optional<std::uint32_t> lookupInfoResponseIDIndex(RawFormID rawInfoFormID, std::uint32_t responseID) const;
+	[[nodiscard]] std::optional<std::uint32_t> lookupInfoResponseID(RawFormID rawInfoFormID, std::uint32_t responseIndex) const;
 	[[nodiscard]] std::optional<std::uint32_t> lookupInfoPromptIndex(RawFormID rawInfoFormID, std::uint32_t stringID) const;
 	[[nodiscard]] std::optional<RawFormID> lookupInfoParentGroup(RawFormID rawInfoFormID) const;
 	[[nodiscard]] std::optional<std::uint32_t> lookupMessageButtonIndex(RawFormID rawMessageFormID, std::uint32_t stringID) const;
@@ -112,6 +110,7 @@ private:
 	std::unordered_map<std::uint64_t, std::uint32_t> m_questStageLogStringIDToIndex;
 	std::unordered_map<std::uint64_t, std::uint32_t> m_infoResponseStringIDToIndex;
 	std::unordered_map<std::uint64_t, std::uint32_t> m_infoResponseIDToIndex;
+	std::unordered_map<std::uint64_t, std::uint32_t> m_infoResponseIndexToID;
 	std::unordered_map<std::uint64_t, std::uint32_t> m_infoPromptStringIDToIndex;
 	std::unordered_map<RawFormID, RawFormID> m_infoParentGroupRawFormID;
 	std::unordered_map<std::uint64_t, std::uint32_t> m_messageButtonStringIDToIndex;
@@ -128,7 +127,6 @@ private:
 	std::unordered_set<std::string> m_ambiguousKeys;
 	std::size_t m_recordsVisited{ 0 };
 	std::size_t m_recordsScanned{ 0 };
-	std::size_t m_recordsSkipped{ 0 };
 	std::size_t m_compressedRecords{ 0 };
 	std::size_t m_failedCompressedRecords{ 0 };
 	bool m_loaded{ false };

@@ -156,23 +156,6 @@ namespace RuntimeQuestLogTranslations
 		g_snapshot.store(std::static_pointer_cast<const QuestJournalSnapshot>(snapshot), std::memory_order_release);
 	}
 
-	LookupResult LookupByCandidates(
-		std::uint32_t runtimeQuestFormID,
-		const std::uint32_t* indexes,
-		std::size_t count)
-	{
-		if (runtimeQuestFormID == 0 || !indexes || count == 0)
-		{
-			return {};
-		}
-		const auto snapshot = g_snapshot.load(std::memory_order_acquire);
-		if (!snapshot)
-		{
-			return {};
-		}
-		return lookupByCandidatesInSnapshot(*snapshot, runtimeQuestFormID, indexes, count);
-	}
-
 	LookupResult LookupByStageItem(
 		std::uint32_t runtimeQuestFormID,
 		std::uint16_t stageIndex,

@@ -11,6 +11,7 @@
 #include "110163/RuntimeDescriptionHook.h"
 #include "110163/RuntimeDialogueButtonHook.h"
 #include "110163/RuntimeDialogueResponseHook.h"
+#include "110163/RuntimeDialogueSubtitleHook.h"
 #include "110163/RuntimeFullNameLoadHook.h"
 #include "110163/RuntimeHudRolloverHook.h"
 #include "RuntimeInGameTextDictionary.h"
@@ -73,6 +74,10 @@ namespace
 			RuntimeDialogueResponseHook::Install();
 		}
 		{
+			RuntimeLoadWatchdog::ScopedPhase phase{ "F4SEPluginLoad RuntimeDialogueSubtitleHook::Install", 0.0 };
+			RuntimeDialogueSubtitleHook::Install();
+		}
+		{
 			RuntimeLoadWatchdog::ScopedPhase phase{ "F4SEPluginLoad RuntimeDialogueButtonHook::Install", 0.0 };
 			RuntimeDialogueButtonHook::Install();
 		}
@@ -102,7 +107,7 @@ namespace
 		REX::INFO("{} AVIF:ANAM const apply is enabled with staged trace.", Plugin::NAME);
 		REX::INFO("{} QUST:CNAM uses TESQuest::GetJournalTextForStageItem journal hook.", Plugin::NAME);
 		REX::INFO("{} BPTD:BPTN body-part names use source-free plugin BPND.type slots and const data mutation.", Plugin::NAME);
-		REX::INFO("{} INFO:RNAM dialogue choices use BGSSceneActionPlayerDialogue context plus DialogueMenuUtils::SetButtonText only; DIAL:FULL remains data-level and INFO:NAM1 stays on DialogueResponse construction.", Plugin::NAME);
+		REX::INFO("{} INFO:RNAM dialogue choices use BGSSceneActionPlayerDialogue context plus DialogueMenuUtils::SetButtonText only; DIAL:FULL remains data-level and INFO:NAM1 response hooks capture identity while SubtitleManager performs the only spoken-text replacement.", Plugin::NAME);
 		REX::INFO("{} XDI DialogueMenu choices use a source-free GetDialogueOptions option wrapper when XDI is present.", Plugin::NAME);
 		REX::INFO("{} HUDRollover user-approved post-data exception replaces trap, furniture, and robot HACK actions from source-free maps.", Plugin::NAME);
 		REX::INFO("{} source-free const text mutation and runtime text hooks enabled.", Plugin::NAME);

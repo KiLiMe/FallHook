@@ -2,7 +2,7 @@
 // Depends on RuntimeFormResolver, SourceFreeTranslationKey, and activation translation declarations.
 // Runtime scope is Fallout 4 1.10.163 activation override data records.
 // Version-specific logic: none; runtime-specific hook installation is isolated elsewhere.
-// Source-free policy: stores destination text keyed by form/sID/editor identity; Source is ignored.
+// Source-free policy: stores destination text keyed by resolved form/editor identity; Source is ignored.
 #include "PCH.h"
 
 #include "110163/RuntimeActivationTextTranslations.h"
@@ -20,7 +20,6 @@ namespace
 	std::mutex g_lock;
 	const TranslationCatalogBuildResult* g_rebuiltCatalog{ nullptr };
 	std::unordered_map<std::uint32_t, std::string> g_byFormID;
-	std::unordered_map<std::uint64_t, std::string> g_byFormStringID;
 	std::unordered_map<std::string, std::string> g_byEditorID;
 	std::optional<std::string> g_knownFurnitureUseText;
 	RuntimeActivationTextTranslations::RebuildStats g_lastStats;
@@ -45,11 +44,6 @@ namespace
 	[[nodiscard]] std::string editorKey(std::string_view editorID)
 	{
 		return SourceFreeTranslationKeys::NormalizeEditorID(editorID);
-	}
-
-	[[nodiscard]] std::uint64_t formStringKey(std::uint32_t formID, std::uint32_t stringID) noexcept
-	{
-		return (static_cast<std::uint64_t>(formID) << 32) | stringID;
 	}
 
 	[[nodiscard]] std::optional<std::uint32_t> resolveRuntimeFormID(const TranslationCatalogRecord& record)
@@ -77,7 +71,6 @@ namespace RuntimeActivationTextTranslations
 		}
 
 		g_byFormID.clear();
-		g_byFormStringID.clear();
 		g_byEditorID.clear();
 		g_knownFurnitureUseText.reset();
 		RebuildStats stats;
@@ -100,14 +93,6 @@ namespace RuntimeActivationTextTranslations
 			if (record.data.formID && !runtimeFormID)
 			{
 				++stats.skippedUnresolvedFormID;
-			}
-			if (runtimeFormID && record.data.stringID)
-			{
-				g_byFormStringID.insert_or_assign(
-					formStringKey(*runtimeFormID, *record.data.stringID),
-					record.data.replacerText);
-				++stats.sidEntries;
-				accepted = true;
 			}
 			if (runtimeFormID)
 			{
@@ -142,12 +127,11 @@ namespace RuntimeActivationTextTranslations
 		if (RuntimeApplySettings::Load().TraceEnabled())
 		{
 			REX::INFO(
-				"{} activation-text map built: accepted={} formEntries={} editorEntries={} sidEntries={} furnitureUse={} unresolvedFormID={} emptyText={}.",
+				"{} activation-text map built: accepted={} formEntries={} editorEntries={} furnitureUse={} unresolvedFormID={} emptyText={}.",
 				Plugin::NAME,
 				stats.accepted,
 				stats.formEntries,
 				stats.editorEntries,
-				stats.sidEntries,
 				stats.knownFurnitureUseEntries,
 				stats.skippedUnresolvedFormID,
 				stats.skippedEmptyText);
@@ -155,7 +139,7 @@ namespace RuntimeActivationTextTranslations
 		return stats;
 	}
 
-	std::optional<std::string> Lookup(const RE::TESForm* form, std::optional<std::uint32_t> stringID)
+	std::optional<std::string> Lookup(const RE::TESForm* form)
 	{
 		if (!form)
 		{
@@ -163,14 +147,6 @@ namespace RuntimeActivationTextTranslations
 		}
 
 		std::scoped_lock lock{ g_lock };
-		if (stringID)
-		{
-			const auto bySid = g_byFormStringID.find(formStringKey(form->formID, *stringID));
-			if (bySid != g_byFormStringID.end())
-			{
-				return bySid->second;
-			}
-		}
 		if (const auto byForm = g_byFormID.find(form->formID); byForm != g_byFormID.end())
 		{
 			return byForm->second;

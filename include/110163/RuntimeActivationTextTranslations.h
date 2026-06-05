@@ -2,7 +2,7 @@
 // Depends on TranslationCatalog records and CommonLibF4 form identity.
 // Runtime scope is Fallout 4 1.10.163 ACTI/FLOR/FURN/NPC_ activation prompt records.
 // Version-specific logic: none; HUDRollover owns runtime hook addresses.
-// Source-free policy: maps by resolved form ID, editor ID, and sID; never by Source or live text.
+// Source-free policy: maps by resolved form ID and editor ID; verified special sIDs only select fixed prompts.
 #pragma once
 
 #include "TranslationCatalog.h"
@@ -22,7 +22,6 @@ namespace RuntimeActivationTextTranslations
 		std::size_t accepted{ 0 };
 		std::size_t formEntries{ 0 };
 		std::size_t editorEntries{ 0 };
-		std::size_t sidEntries{ 0 };
 		std::size_t knownFurnitureUseEntries{ 0 };
 		std::size_t skippedWrongType{ 0 };
 		std::size_t skippedEmptyText{ 0 };
@@ -31,6 +30,6 @@ namespace RuntimeActivationTextTranslations
 	};
 
 	RebuildStats Rebuild(const TranslationCatalogBuildResult& catalog, bool force = false);
-	[[nodiscard]] std::optional<std::string> Lookup(const RE::TESForm* form, std::optional<std::uint32_t> stringID);
+	[[nodiscard]] std::optional<std::string> Lookup(const RE::TESForm* form);
 	[[nodiscard]] std::optional<std::string> KnownFurnitureUseText();
 }

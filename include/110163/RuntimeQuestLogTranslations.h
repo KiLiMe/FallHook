@@ -7,7 +7,6 @@
 
 #include "TranslationCatalog.h"
 
-#include <cstddef>
 #include <cstdint>
 
 namespace RuntimeQuestLogTranslations
@@ -19,11 +18,6 @@ namespace RuntimeQuestLogTranslations
 	};
 
 	void Rebuild(const TranslationCatalogBuildResult& catalog);
-
-	[[nodiscard]] LookupResult LookupByCandidates(
-		std::uint32_t runtimeQuestFormID,
-		const std::uint32_t* indexes,
-		std::size_t count);
 
 	[[nodiscard]] LookupResult LookupByStageItem(
 		std::uint32_t runtimeQuestFormID,

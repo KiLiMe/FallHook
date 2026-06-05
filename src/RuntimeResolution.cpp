@@ -5,8 +5,6 @@
 // Source-free policy: FULL/NPC FULL preserve REC ids so indexed fragments stay out of base names.
 #include "RuntimeResolution.h"
 
-#include <format>
-
 namespace RuntimeResolution
 {
 	std::optional<std::uint32_t> GetSemanticIndex(const XmlTranslationEntry& entry, TranslationType type)
@@ -35,10 +33,5 @@ namespace RuntimeResolution
 		default:
 			return entry.index;
 		}
-	}
-
-	std::string MakeRuntimeLogKey(std::uint32_t formID, TranslationType type, std::uint32_t index)
-	{
-		return std::format("{:08X}|{}|{}", formID, static_cast<std::uint8_t>(type), index);
 	}
 }

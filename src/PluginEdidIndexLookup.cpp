@@ -123,6 +123,11 @@ std::optional<std::uint32_t> PluginEdidIndex::lookupInfoResponseIDIndex(RawFormI
 	return m_loaded ? lookupIndexedValue(m_infoResponseIDToIndex, rawInfoFormID, responseID) : std::nullopt;
 }
 
+std::optional<std::uint32_t> PluginEdidIndex::lookupInfoResponseID(RawFormID rawInfoFormID, std::uint32_t responseIndex) const
+{
+	return m_loaded ? lookupIndexedValue(m_infoResponseIndexToID, rawInfoFormID, responseIndex + 1) : std::nullopt;
+}
+
 std::optional<std::uint32_t> PluginEdidIndex::lookupInfoPromptIndex(RawFormID rawInfoFormID, std::uint32_t stringID) const
 {
 	return m_loaded ? lookupIndexedValue(m_infoPromptStringIDToIndex, rawInfoFormID, stringID) : std::nullopt;

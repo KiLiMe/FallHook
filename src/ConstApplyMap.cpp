@@ -68,6 +68,9 @@ namespace ConstApplyMap
 		case TranslationType::kDoorAlternateCloseText:
 		case TranslationType::kMessageShortName:
 		case TranslationType::kActorValueAbbreviation:
+		case TranslationType::kRaceMorphRegionName:
+		case TranslationType::kRaceMorphPresetName:
+		case TranslationType::kRaceTintGroupName:
 			return true;
 		default:
 			return false;

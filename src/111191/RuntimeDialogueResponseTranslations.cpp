@@ -1,8 +1,8 @@
-// AI CONTEXT: Builds and applies INFO:NAM1 maps for DialogueResponse constructor-time mutation.
-// Depends on RuntimeFormResolver, RuntimeLocalizedStringID, RuntimeTextStringAssign, and CommonLibF4 dialogue types.
-// Runtime scope is Fallout 4 1.11.191 response construction before UI/subtitle consumption.
-// Version-specific logic: uses 111191 resolver/string assignment modules; no hook addresses live here.
-// Source-free policy: resolves by INFO form, response sID, ordinal, and response ID candidates; never by Source text.
+// AI CONTEXT: Builds and resolves INFO:NAM1 maps during DialogueResponse construction.
+// Depends on RuntimeFormResolver, RuntimeLocalizedStringID, response candidates, and CommonLibF4 dialogue types.
+// Runtime scope is Fallout 4 1.11.191 response identity resolution before subtitle-context capture.
+// Version-specific logic: uses 111191 resolver and dialogue layouts; no hook addresses live here.
+// Source-free policy: resolves by INFO form, response sID, ordinal, and response ID/index candidates; never by Source text.
 #include "PCH.h"
 
 #include "111191/RuntimeDialogueResponseTranslations.h"
@@ -10,15 +10,14 @@
 #include "RuntimeApplySettings.h"
 #include "RuntimeActivityWatch.h"
 #include "111191/RuntimeFormResolver.h"
+#include "111191/RuntimeDialogueResponseCandidates.h"
+#include "111191/RuntimeDialogueResponseMap.h"
 #include "111191/RuntimeLocalizedStringID.h"
-#include "111191/RuntimeTextStringAssign.h"
 
 #include "RE/B/BSFixedString.h"
-#include "RE/D/DialogueResponse.h"
 #include "RE/T/TESResponse.h"
 #include "RE/T/TESTopicInfo.h"
 
-#include <array>
 #include <atomic>
 #include <memory>
 #include <mutex>
@@ -30,35 +29,14 @@ namespace Runtime111191
 {
 namespace
 {
-	constexpr std::uint32_t kMaxCandidateDepth{ 32 };
-	constexpr std::uint32_t kMaxResponses{ 128 };
 	constexpr std::uint32_t kTraceLimit{ 192 };
-
-	struct ResponseTargets
-	{
-		struct Target
-		{
-			std::string text;
-			RE::BSFixedStringCS fixedText;
-		};
-
-		std::unordered_map<std::uint32_t, Target> bySID;
-		std::unordered_map<std::uint32_t, Target> byIndex;
-	};
-
-	struct ResponseSnapshot
-	{
-		std::unordered_map<std::uint32_t, ResponseTargets> byInfoForm;
-		std::uint64_t generation{ 0 };
-		bool traceEnabled{ false };
-	};
+	namespace ResponseMap = RuntimeDialogueResponseMap;
 
 	struct ResponseResolution
 	{
 		std::uint64_t generation{ 0 };
 		std::string text;
 		RE::BSFixedStringCS fixedText;
-		std::atomic_bool responseAssigned{ false };
 		std::uint32_t ordinal{ 0xFFFFFFFFu };
 		std::uint32_t responseID{ 0 };
 		bool translated{ false };
@@ -66,6 +44,7 @@ namespace
 
 	struct ResponseCacheKey
 	{
+		const RE::TESTopic* topic{ nullptr };
 		const RE::TESTopicInfo* topicInfo{ nullptr };
 		const RE::TESResponse* response{ nullptr };
 
@@ -76,31 +55,25 @@ namespace
 	{
 		[[nodiscard]] std::size_t operator()(const ResponseCacheKey& key) const noexcept
 		{
+			const auto topicValue = reinterpret_cast<std::uintptr_t>(key.topic);
 			const auto infoValue = reinterpret_cast<std::uintptr_t>(key.topicInfo);
 			const auto responseValue = reinterpret_cast<std::uintptr_t>(key.response);
-			return std::hash<std::uintptr_t>{}(
-				responseValue ^ (infoValue + 0x9E3779B97F4A7C15ull + (responseValue << 6) + (responseValue >> 2)));
+			const auto mixedInfo = infoValue + 0x9E3779B97F4A7C15ull + (responseValue << 6) + (responseValue >> 2);
+			return std::hash<std::uintptr_t>{}(responseValue ^ mixedInfo ^ (topicValue << 1));
 		}
-	};
-
-	struct TopicInfoCandidates
-	{
-		std::array<RE::TESTopicInfo*, kMaxCandidateDepth> values{};
-		std::size_t count{ 0 };
 	};
 
 	std::mutex g_rebuildLock;
 	std::shared_mutex g_responseCacheLock;
 	const TranslationCatalogBuildResult* g_catalog{ nullptr };
-	std::atomic<std::shared_ptr<const ResponseSnapshot>> g_snapshot;
+	std::atomic<std::shared_ptr<const ResponseMap::Snapshot>> g_snapshot;
 	std::unordered_map<ResponseCacheKey, std::shared_ptr<ResponseResolution>, ResponseCacheKeyHash> g_responseCache;
 	std::atomic_uint32_t g_traceLines{ 0 };
 	std::atomic_uint64_t g_generation{ 0 };
 
 	[[nodiscard]] bool isResponseRecord(const TranslationCatalogRecord& record) noexcept
 	{
-		return record.recordSignature == "INFO NAM1" &&
-			record.data.translationType == TranslationType::kRuntimeIndex &&
+		return record.recordSignature == "INFO NAM1" && record.data.translationType == TranslationType::kRuntimeIndex &&
 			!record.data.replacerText.empty();
 	}
 
@@ -128,177 +101,15 @@ namespace
 		return *(reinterpret_cast<const std::uint8_t*>(response) + kResponseIDOffset);
 	}
 
-	[[nodiscard]] ResponseTargets::Target makeTarget(std::string text)
-	{
-		ResponseTargets::Target target;
-		target.text = std::move(text);
-		target.fixedText = target.text;
-		return target;
-	}
-
-	void pushCandidate(TopicInfoCandidates& candidates, RE::TESTopicInfo* info)
-	{
-		if (!info)
-		{
-			return;
-		}
-		for (std::size_t i = 0; i < candidates.count; ++i)
-		{
-			if (candidates.values[i] == info)
-			{
-				return;
-			}
-		}
-		if (candidates.count < candidates.values.size())
-		{
-			candidates.values[candidates.count++] = info;
-		}
-	}
-
-	void appendCandidateChain(TopicInfoCandidates& candidates, RE::TESTopicInfo* info)
-	{
-		for (auto* current = info; current && candidates.count < candidates.values.size(); current = current->dataInfo)
-		{
-			pushCandidate(candidates, current);
-		}
-	}
-
-	[[nodiscard]] TopicInfoCandidates topicInfoCandidates(RE::TESTopicInfo* topicInfo)
-	{
-		TopicInfoCandidates candidates;
-		auto* responseInfo = topicInfo;
-		for (std::uint32_t depth = 0; responseInfo && responseInfo->dataInfo && depth < kMaxCandidateDepth; ++depth)
-		{
-			responseInfo = responseInfo->dataInfo;
-		}
-		pushCandidate(candidates, responseInfo);
-		appendCandidateChain(candidates, topicInfo);
-		appendCandidateChain(candidates, responseInfo);
-		return candidates;
-	}
-
-	void addIndexCandidate(std::array<std::uint32_t, 5>& indexes, std::size_t& count, std::uint32_t value)
-	{
-		if (std::ranges::find(indexes.begin(), indexes.begin() + count, value) == indexes.begin() + count)
-		{
-			indexes[count++] = value;
-		}
-	}
-
-	[[nodiscard]] std::array<std::uint32_t, 5> indexCandidates(std::uint32_t ordinal, std::uint32_t id, std::size_t& count)
-	{
-		std::array<std::uint32_t, 5> indexes{};
-		addIndexCandidate(indexes, count, ordinal);
-		if (id > 0)
-		{
-			addIndexCandidate(indexes, count, id - 1);
-			addIndexCandidate(indexes, count, id);
-		}
-		if (id > 1)
-		{
-			addIndexCandidate(indexes, count, id - 2);
-		}
-		return indexes;
-	}
-
-	[[nodiscard]] std::optional<std::uint32_t> findOrdinal(const TopicInfoCandidates& candidates, const RE::TESResponse* response)
-	{
-		if (!response)
-		{
-			return std::nullopt;
-		}
-		for (std::size_t i = 0; i < candidates.count; ++i)
-		{
-			const auto* candidate = candidates.values[i];
-			std::uint32_t ordinal = 0;
-			for (auto* current = candidate ? candidate->responses.head : nullptr;
-				 current && ordinal < kMaxResponses;
-				 current = current->pNext, ++ordinal)
-			{
-				if (current == response)
-				{
-					return ordinal;
-				}
-			}
-		}
-		return std::nullopt;
-	}
-
-	[[nodiscard]] const ResponseTargets::Target* lookupBySID(
-		const ResponseSnapshot& snapshot,
-		const TopicInfoCandidates& candidates,
-		std::uint32_t sid)
-	{
-		for (std::size_t i = 0; i < candidates.count; ++i)
-		{
-			const auto* candidate = candidates.values[i];
-			if (!candidate)
-			{
-				continue;
-			}
-			const auto foundTargets = snapshot.byInfoForm.find(candidate->formID);
-			if (foundTargets == snapshot.byInfoForm.end())
-			{
-				continue;
-			}
-			if (const auto found = foundTargets->second.bySID.find(sid); found != foundTargets->second.bySID.end())
-			{
-				return std::addressof(found->second);
-			}
-		}
-		return nullptr;
-	}
-
-	[[nodiscard]] const ResponseTargets::Target* lookupByIndex(
-		const ResponseSnapshot& snapshot,
-		const TopicInfoCandidates& candidates,
-		const std::array<std::uint32_t, 5>& indexes,
-		std::size_t indexCount)
-	{
-		for (std::size_t candidateIndex = 0; candidateIndex < candidates.count; ++candidateIndex)
-		{
-			const auto* candidate = candidates.values[candidateIndex];
-			if (!candidate)
-			{
-				continue;
-			}
-			const auto foundTargets = snapshot.byInfoForm.find(candidate->formID);
-			if (foundTargets == snapshot.byInfoForm.end())
-			{
-				continue;
-			}
-			const auto& targets = foundTargets->second;
-			for (std::size_t i = 0; i < indexCount; ++i)
-			{
-				if (const auto found = targets.byIndex.find(indexes[i]); found != targets.byIndex.end())
-				{
-					return std::addressof(found->second);
-				}
-			}
-		}
-		return nullptr;
-	}
-
-	void traceApply(
-		const ResponseSnapshot& snapshot,
-		std::string_view stage,
-		RE::TESTopicInfo* info,
-		std::uint32_t ordinal,
-		std::uint32_t id,
-		std::size_t textLen)
+	void traceApply(const ResponseMap::Snapshot& snapshot,
+		std::string_view stage, RE::TESTopicInfo* info, std::uint32_t ordinal, std::uint32_t id, std::size_t textLen)
 	{
 		if (!snapshot.traceEnabled || g_traceLines.fetch_add(1, std::memory_order_relaxed) >= kTraceLimit)
 		{
 			return;
 		}
-		REX::INFO(
-			"{} dialogue-response trace stage={} info={:08X} ordinal={} responseID={} textLen={}",
-			Plugin::NAME,
-			stage,
-			info ? info->formID : 0,
-			ordinal,
-			id,
-			textLen);
+		REX::INFO("{} dialogue-response trace stage={} info={:08X} ordinal={} responseID={} textLen={}",
+			Plugin::NAME, stage, info ? info->formID : 0, ordinal, id, textLen);
 	}
 
 	[[nodiscard]] std::shared_ptr<ResponseResolution> findCachedResponse(const ResponseCacheKey& key, std::uint64_t generation)
@@ -312,9 +123,7 @@ namespace
 		return found->second;
 	}
 
-	[[nodiscard]] std::shared_ptr<ResponseResolution> cacheResponse(
-		const ResponseCacheKey& key,
-		const std::shared_ptr<ResponseResolution>& resolution)
+	[[nodiscard]] std::shared_ptr<ResponseResolution> cacheResponse(const ResponseCacheKey& key, const std::shared_ptr<ResponseResolution>& resolution)
 	{
 		std::unique_lock lock{ g_responseCacheLock };
 		const auto found = g_responseCache.find(key);
@@ -327,55 +136,87 @@ namespace
 	}
 
 	[[nodiscard]] std::shared_ptr<ResponseResolution> resolveResponse(
-		const ResponseSnapshot& snapshot,
-		RE::TESTopicInfo* topicInfo,
-		RE::TESResponse* response)
+		const ResponseMap::Snapshot& snapshot, RE::TESTopic* topic, RE::TESTopicInfo* topicInfo, RE::TESResponse* response)
 	{
 		auto resolution = std::make_shared<ResponseResolution>();
 		resolution->generation = snapshot.generation;
 
-		const auto candidates = RuntimeActivityWatch::RunWork(
-			"DialogueResponse candidates",
-			[&]() { return topicInfoCandidates(topicInfo); });
-		const auto sid = RuntimeActivityWatch::RunWork(
-			"DialogueResponse SID read",
-			[&]() { return RuntimeLocalizedStringID::Read(response->responseText); });
+		const auto candidates = RuntimeActivityWatch::RunWork("DialogueResponse candidates", [&]() { return RuntimeDialogueResponseCandidates::Make(topic, topicInfo); });
+		const auto owner = RuntimeActivityWatch::RunWork("DialogueResponse owner scan", [&]() {
+			return RuntimeDialogueResponseCandidates::FindOwner(candidates, response);
+		});
+		const auto sid = RuntimeActivityWatch::RunWork("DialogueResponse SID read", [&]() { return RuntimeLocalizedStringID::Read(response->responseText); });
 
-		const auto* target = sid ? RuntimeActivityWatch::RunWork(
-									  "DialogueResponse SID lookup",
-									  [&]() { return lookupBySID(snapshot, candidates, *sid); }) :
-								  nullptr;
+		if (owner)
+		{
+			resolution->ordinal = owner->ordinal;
+		}
+		const auto* target = owner && sid ? RuntimeActivityWatch::RunWork("DialogueResponse owner SID lookup",
+												 [&]() { return ResponseMap::LookupInfoSID(snapshot, owner->info, *sid); }) : nullptr;
+		if (!target && topicInfo)
+		{
+			target = sid ? RuntimeActivityWatch::RunWork("DialogueResponse topic SID lookup",
+							   [&]() { return ResponseMap::LookupInfoSID(snapshot, topicInfo, *sid); }) :
+						   RuntimeActivityWatch::RunWork("DialogueResponse topic default lookup",
+							   [&]() { return ResponseMap::LookupInfoDefault(snapshot, topicInfo); });
+		}
+		if (!target && sid)
+		{
+			target = RuntimeActivityWatch::RunWork("DialogueResponse SID lookup", [&]() { return ResponseMap::LookupBySID(snapshot, candidates, *sid); });
+		}
+		if (!target && topic && sid)
+		{
+			target = RuntimeActivityWatch::RunWork("DialogueResponse topic form SID lookup", [&]() { return ResponseMap::LookupFormSID(snapshot, topic->formID, *sid); });
+		}
 		if (!target)
 		{
-			resolution->responseID = RuntimeActivityWatch::RunWork(
-				"DialogueResponse responseID read",
-				[&]() { return responseID(response); });
-			const auto ordinal = RuntimeActivityWatch::RunWork(
-				"DialogueResponse ordinal scan",
-				[&]() { return findOrdinal(candidates, response); });
-			std::size_t indexCount = 0;
-			std::array<std::uint32_t, 5> indexes{};
-			if (ordinal)
-			{
-				resolution->ordinal = *ordinal;
-				indexes = indexCandidates(*ordinal, resolution->responseID, indexCount);
-			}
-			else if (resolution->responseID > 0)
-			{
-				addIndexCandidate(indexes, indexCount, resolution->responseID - 1);
-				addIndexCandidate(indexes, indexCount, resolution->responseID);
-				if (resolution->responseID > 1)
-				{
-					addIndexCandidate(indexes, indexCount, resolution->responseID - 2);
-				}
-			}
-			target = RuntimeActivityWatch::RunWork(
-				"DialogueResponse index lookup",
-				[&]() { return lookupByIndex(snapshot, candidates, indexes, indexCount); });
+			target = RuntimeActivityWatch::RunWork("DialogueResponse unique SID lookup", [&]() -> const ResponseMap::Target* {
+				const auto found = sid ? snapshot.byUniqueSID.find(*sid) : snapshot.byUniqueSID.end();
+				return found != snapshot.byUniqueSID.end() && !found->second.text.empty() ? std::addressof(found->second) : nullptr;
+			});
 		}
-		else if (snapshot.traceEnabled)
+		resolution->responseID = RuntimeActivityWatch::RunWork("DialogueResponse responseID read", [&]() { return responseID(response); });
+		if (!target && resolution->responseID > 0)
 		{
-			resolution->responseID = responseID(response);
+			target = owner ? RuntimeActivityWatch::RunWork("DialogueResponse owner responseID lookup",
+								 [&]() { return ResponseMap::LookupInfoResponseID(snapshot, owner->info, resolution->responseID); }) : nullptr;
+			if (!target && topicInfo)
+			{
+				target = RuntimeActivityWatch::RunWork("DialogueResponse exact info responseID lookup",
+					[&]() { return ResponseMap::LookupInfoResponseID(snapshot, topicInfo, resolution->responseID); });
+			}
+			if (!target)
+			{
+				target = RuntimeActivityWatch::RunWork("DialogueResponse candidate responseID lookup",
+					[&]() { return ResponseMap::LookupByResponseID(snapshot, candidates, resolution->responseID); });
+			}
+		}
+		if (!target && resolution->responseID > 0)
+		{
+			std::size_t indexCount = 0;
+			const auto indexes = ResponseMap::IndexCandidates(
+				owner ? owner->ordinal : 0xFFFFFFFFu,
+				resolution->responseID,
+				indexCount);
+			target = RuntimeActivityWatch::RunWork("DialogueResponse candidate index lookup",
+				[&]() { return ResponseMap::LookupByIndex(snapshot, candidates, indexes, indexCount); });
+		}
+		if (!target)
+		{
+			if (owner)
+			{
+				target = RuntimeActivityWatch::RunWork("DialogueResponse owner index lookup",
+					[&]() { return ResponseMap::LookupInfoIndex(snapshot, owner->info, owner->ordinal); });
+			}
+			if (!target && owner)
+			{
+				target = RuntimeActivityWatch::RunWork("DialogueResponse owner default lookup", [&]() { return ResponseMap::LookupInfoDefault(snapshot, owner->info); });
+			}
+			if (!target && topicInfo)
+			{
+				target = RuntimeActivityWatch::RunWork("DialogueResponse topic default lookup",
+					[&]() { return ResponseMap::LookupInfoDefault(snapshot, topicInfo); });
+			}
 		}
 
 		if (!target || target->text.empty())
@@ -399,10 +240,11 @@ namespace RuntimeDialogueResponseTranslations
 		{
 			return;
 		}
-		auto snapshot = std::make_shared<ResponseSnapshot>();
+		auto snapshot = std::make_shared<ResponseMap::Snapshot>();
 		snapshot->traceEnabled = RuntimeApplySettings::Load().TraceEnabled();
 		snapshot->generation = g_generation.fetch_add(1, std::memory_order_acq_rel) + 1;
 		snapshot->byInfoForm.reserve(catalog.records.size());
+		std::size_t exactResponseIDs = 0;
 		for (const auto& record : catalog.records)
 		{
 			if (!isResponseRecord(record))
@@ -410,18 +252,33 @@ namespace RuntimeDialogueResponseTranslations
 				continue;
 			}
 			const auto formID = runtimeFormID(record);
+			const auto target = ResponseMap::MakeTarget(record.data.replacerText);
 			if (!formID)
 			{
+				if (record.data.stringID)
+				{
+					ResponseMap::AddUniqueSID(*snapshot, *record.data.stringID, target);
+				}
 				continue;
 			}
 			auto& targets = snapshot->byInfoForm[*formID];
 			if (record.data.stringID)
 			{
-				targets.bySID.insert_or_assign(*record.data.stringID, makeTarget(record.data.replacerText));
+				ResponseMap::AddUniqueSID(*snapshot, *record.data.stringID, target);
+				targets.bySID.insert_or_assign(*record.data.stringID, target);
 			}
 			if (record.data.index)
 			{
-				targets.byIndex.insert_or_assign(*record.data.index, makeTarget(record.data.replacerText));
+				targets.byIndex.insert_or_assign(*record.data.index, target);
+			}
+			else
+			{
+				ResponseMap::AddDefaultTarget(targets, target);
+			}
+			if (record.data.responseID)
+			{
+				ResponseMap::AddResponseIDTarget(targets, *record.data.responseID, target);
+				++exactResponseIDs;
 			}
 		}
 		g_catalog = std::addressof(catalog);
@@ -430,57 +287,49 @@ namespace RuntimeDialogueResponseTranslations
 			g_responseCache.clear();
 		}
 		g_traceLines.store(0, std::memory_order_relaxed);
-		g_snapshot.store(std::static_pointer_cast<const ResponseSnapshot>(snapshot), std::memory_order_release);
+		g_snapshot.store(std::static_pointer_cast<const ResponseMap::Snapshot>(snapshot), std::memory_order_release);
 		if (snapshot->traceEnabled)
 		{
-			REX::INFO("{} dialogue-response map built: infoForms={}.", Plugin::NAME, snapshot->byInfoForm.size());
+			REX::INFO("{} dialogue-response map built: infoForms={} uniqueSIDs={} exactResponseIDs={}.",
+				Plugin::NAME, snapshot->byInfoForm.size(), snapshot->byUniqueSID.size(), exactResponseIDs);
 		}
 	}
 
-	bool ApplyConstructedResponse(
-		RE::DialogueResponse* constructed,
-		RE::TESTopicInfo* topicInfo,
-		RE::TESResponse* response)
+	LookupResult ResolveResponse(RE::TESTopic* topic, RE::TESTopicInfo* topicInfo, RE::TESResponse* response)
 	{
-		if (!constructed || !topicInfo || !response)
+		if (!topicInfo || !response)
 		{
-			return false;
+			return {};
 		}
 		const auto snapshot = g_snapshot.load(std::memory_order_acquire);
 		if (!snapshot)
 		{
-			return false;
+			return {};
 		}
-		const ResponseCacheKey key{ topicInfo, response };
+		const ResponseCacheKey key{ topic, topicInfo, response };
 		auto resolution = RuntimeActivityWatch::RunWork(
 			"DialogueResponse cache lookup",
 			[&]() { return findCachedResponse(key, snapshot->generation); });
 		if (!resolution)
 		{
-			resolution = RuntimeActivityWatch::RunWork(
-				"DialogueResponse resolve response",
-				[&]() { return resolveResponse(*snapshot, topicInfo, response); });
+			resolution = RuntimeActivityWatch::RunWork("DialogueResponse resolve response", [&]() { return resolveResponse(*snapshot, topic, topicInfo, response); });
 			resolution = cacheResponse(key, resolution);
 		}
 
 		if (!resolution || !resolution->translated || resolution->text.empty())
 		{
-			return false;
+			return {};
 		}
 
-		bool expected = false;
-		if (resolution->responseAssigned.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
-		{
-			RuntimeActivityWatch::RunWork(
-				"DialogueResponse assign responseText",
-				[&]() { RuntimeTextStringAssign::AssignPlainFixedLocalized(response->responseText, resolution->fixedText); });
-		}
-		RuntimeActivityWatch::RunWork(
-			"DialogueResponse assign constructed text",
-			[&]() { constructed->text = resolution->fixedText; });
-		traceApply(*snapshot, "ctor-replace", topicInfo, resolution->ordinal, resolution->responseID, resolution->text.size());
-		return true;
+		traceApply(*snapshot, "capture-resolve", topicInfo, resolution->ordinal, resolution->responseID, resolution->text.size());
+		return {
+			resolution->fixedText,
+			resolution->ordinal,
+			resolution->responseID,
+			true
+		};
 	}
 }
+
 
 } // namespace Runtime111191

@@ -148,23 +148,6 @@ namespace RuntimeInGameTextLog
 		return moduleOffset(address);
 	}
 
-	std::string FormatCallStack(std::uint32_t skipFrames, std::uint32_t maxFrames)
-	{
-		void* frames[8]{};
-		const auto wanted = std::min<std::uint32_t>(maxFrames, static_cast<std::uint32_t>(std::size(frames)));
-		const auto captured = CaptureStackBackTrace(skipFrames + 1, wanted, frames, nullptr);
-		std::string text;
-		for (USHORT i = 0; i < captured; ++i)
-		{
-			if (!text.empty())
-			{
-				text += ">";
-			}
-			text += moduleOffset(frames[i]);
-		}
-		return text;
-	}
-
 	void Hit(std::wstring_view raw, std::wstring_view text, std::wstring_view dest)
 	{
 		if (!Enabled())

@@ -20,17 +20,6 @@ namespace RuntimeTextStringAssign
 		raw = text.empty() ? kEmptyText : text;
 	}
 
-	void AssignPlainFixedLocalized(RE::BGSLocalizedString& target, const RE::BSFixedStringCS& text)
-	{
-		auto& raw = reinterpret_cast<RE::BSFixedStringCS&>(target);
-		if (text.empty())
-		{
-			raw = kEmptyText;
-			return;
-		}
-		raw = text;
-	}
-
 	std::string NonEmptyString(std::string_view text)
 	{
 		return text.empty() ? std::string{ kEmptyText } : std::string{ text };

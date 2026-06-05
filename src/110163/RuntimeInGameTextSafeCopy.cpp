@@ -54,9 +54,4 @@ namespace RuntimeInGameTextSafeCopy
 	{
 		return copyBounded<wchar_t, std::wstring>(text, limit);
 	}
-
-	std::string Utf8(const char* text, std::size_t limit)
-	{
-		return copyBounded<char, std::string>(text, limit);
-	}
 }

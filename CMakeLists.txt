@@ -152,8 +152,13 @@ set(FALLHOOK_RUNTIME_110163_SOURCES
     src/110163/RuntimeDialogueChoiceTranslations.cpp
     src/110163/RuntimeDialogueDataApply.cpp
     src/110163/RuntimeDialogueForms.cpp
+    src/110163/RuntimeDialogueResponseCandidates.cpp
     src/110163/RuntimeDialogueResponseHook.cpp
+    src/110163/RuntimeDialogueResponseMap.cpp
     src/110163/RuntimeDialogueResponseTranslations.cpp
+    src/110163/RuntimeDialogueSubtitleContext.cpp
+    src/110163/RuntimeDialogueSubtitleHook.cpp
+    src/110163/RuntimeDialogueSubtitleTranslations.cpp
     src/110163/RuntimeFormResolver.cpp
     src/110163/RuntimeFullNameLoadHook.cpp
     src/110163/RuntimeFullNameLoadTranslations.cpp
@@ -173,6 +178,7 @@ set(FALLHOOK_RUNTIME_110163_SOURCES
     src/110163/RuntimePreload.cpp
     src/110163/RuntimeQuestJournalTextHook.cpp
     src/110163/RuntimeQuestLogTranslations.cpp
+    src/110163/RuntimeRaceText.cpp
     src/110163/RuntimeRegionMapText.cpp
     src/110163/RuntimeTextApply.cpp
     src/110163/RuntimeTextIndexedLists.cpp
@@ -202,8 +208,13 @@ set(FALLHOOK_RUNTIME_111191_SOURCES
     src/111191/RuntimeDialogueChoiceContext.cpp
     src/111191/RuntimeDialogueChoiceTranslations.cpp
     src/111191/RuntimeDialogueForms.cpp
+    src/111191/RuntimeDialogueResponseCandidates.cpp
     src/111191/RuntimeDialogueResponseHook.cpp
+    src/111191/RuntimeDialogueResponseMap.cpp
     src/111191/RuntimeDialogueResponseTranslations.cpp
+    src/111191/RuntimeDialogueSubtitleContext.cpp
+    src/111191/RuntimeDialogueSubtitleHook.cpp
+    src/111191/RuntimeDialogueSubtitleTranslations.cpp
     src/111191/RuntimeFormResolver.cpp
     src/111191/RuntimeFullNameLoadHook.cpp
     src/111191/RuntimeFullNameLoadTranslations.cpp
@@ -223,6 +234,7 @@ set(FALLHOOK_RUNTIME_111191_SOURCES
     src/111191/RuntimePreload.cpp
     src/111191/RuntimeQuestJournalTextHook.cpp
     src/111191/RuntimeQuestLogTranslations.cpp
+    src/111191/RuntimeRaceText.cpp
     src/111191/RuntimeRegionMapText.cpp
     src/111191/RuntimeTextApply.cpp
     src/111191/RuntimeTextIndexedLists.cpp

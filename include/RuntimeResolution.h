@@ -9,10 +9,8 @@
 #include "XmlTranslationParser.h"
 
 #include <optional>
-#include <string>
 
 namespace RuntimeResolution
 {
 	std::optional<std::uint32_t> GetSemanticIndex(const XmlTranslationEntry& entry, TranslationType type);
-	std::string MakeRuntimeLogKey(std::uint32_t formID, TranslationType type, std::uint32_t index);
 }

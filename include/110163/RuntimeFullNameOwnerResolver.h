@@ -181,9 +181,4 @@ namespace RuntimeFullNameOwnerResolver
 		}
 		return nullptr;
 	}
-
-	[[nodiscard]] inline RE::TESForm* Resolve(RE::TESFullName* fullName)
-	{
-		return IsReadable(fullName, sizeof(RE::TESFullName)) ? ResolveKnownReadable(fullName) : nullptr;
-	}
 }

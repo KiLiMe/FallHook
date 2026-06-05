@@ -6,45 +6,9 @@
 #include "XmlLoadOrder.h"
 
 #include <algorithm>
-#include <cctype>
-
-namespace
-{
-	std::string lowerCopy(std::string_view value)
-	{
-		std::string lowered{ value };
-		std::ranges::transform(lowered, lowered.begin(), [](unsigned char ch) {
-			return static_cast<char>(std::tolower(ch));
-		});
-		return lowered;
-	}
-}
 
 namespace XmlLoadOrder
 {
-	Mode ParseMode(std::string_view value) noexcept
-	{
-		const auto lowered = lowerCopy(value);
-		if (lowered == "filename")
-		{
-			return Mode::kFilename;
-		}
-
-		return Mode::kPlugin;
-	}
-
-	std::string_view ModeName(Mode mode) noexcept
-	{
-		switch (mode)
-		{
-		case Mode::kFilename:
-			return "filename";
-		case Mode::kPlugin:
-		default:
-			return "plugin";
-		}
-	}
-
 	std::vector<std::size_t> SortIndices(std::span<const SortEntry> entries, Mode mode)
 	{
 		std::vector<std::size_t> order;

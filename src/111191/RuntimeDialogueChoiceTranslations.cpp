@@ -8,6 +8,7 @@
 #include "111191/RuntimeDialogueChoiceTranslations.h"
 
 #include "RuntimeApplySettings.h"
+#include "SourceFreeTranslationKey.h"
 #include "111191/RuntimeFormResolver.h"
 
 #include <atomic>
@@ -50,6 +51,16 @@ namespace
 		return record.recordSignature == "DIAL FULL" &&
 			record.data.translationType == TranslationType::kRuntime1 &&
 			hasText(record.data.replacerText);
+	}
+
+	[[nodiscard]] bool isEditorMarkerOutput(const TranslationCatalogRecord& record)
+	{
+		if (!record.data.editorID || record.data.editorID->empty())
+		{
+			return false;
+		}
+		return SourceFreeTranslationKeys::NormalizeEditorID(record.data.replacerText) ==
+			SourceFreeTranslationKeys::NormalizeEditorID(*record.data.editorID);
 	}
 
 	[[nodiscard]] std::optional<std::uint32_t> runtimeFormID(const TranslationCatalogRecord& record)
@@ -119,6 +130,10 @@ namespace RuntimeDialogueChoiceTranslations
 			if (isPromptRecord(record))
 			{
 				snapshot->promptsByInfo.insert_or_assign(*formID, record.data.replacerText);
+			}
+			else if (isEditorMarkerOutput(record))
+			{
+				continue;
 			}
 			else
 			{

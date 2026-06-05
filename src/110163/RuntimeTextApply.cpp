@@ -7,6 +7,7 @@
 
 #include "110163/RuntimeTextApply.h"
 #include "110163/RuntimeTextIndexedLists.h"
+#include "110163/RuntimeRaceText.h"
 #include "110163/RuntimeRegionMapText.h"
 #include "110163/RuntimeTextReference.h"
 #include "110163/RuntimeActorValueAnamFixer.h"
@@ -40,6 +41,9 @@ namespace RuntimeTextApply
 		case TranslationType::kDoorAlternateCloseText:
 		case TranslationType::kMessageShortName:
 		case TranslationType::kActorValueAbbreviation:
+		case TranslationType::kRaceMorphRegionName:
+		case TranslationType::kRaceMorphPresetName:
+		case TranslationType::kRaceTintGroupName:
 		case TranslationType::kReference:
 		case TranslationType::kTerminalResultText:
 		case TranslationType::kTerminalBodyText:
@@ -115,6 +119,10 @@ namespace RuntimeTextApply
 			return RuntimeRegionMapText::Apply(form, data);
 		case TranslationType::kActorValueAbbreviation:
 			return RuntimeActorValueAnamFixer::Apply(form, data);
+		case TranslationType::kRaceMorphRegionName:
+		case TranslationType::kRaceMorphPresetName:
+		case TranslationType::kRaceTintGroupName:
+			return RuntimeRaceText::Apply(form, data);
 		case TranslationType::kButtonText1:
 			return RuntimeTextIndexedLists::ApplyMessageBoxButton(form, data);
 		case TranslationType::kQuestObjective:

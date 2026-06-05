@@ -1,8 +1,8 @@
-// AI CONTEXT: Hooks dialogue response construction for lazy INFO:NAM1 spoken-line mutation.
-// Depends on RuntimeDialogueResponseTranslations, RuntimeHookWatch, and RuntimePrologueHook.
+// AI CONTEXT: Hooks DialogueResponse construction to resolve selected INFO:NAM1 text and feed subtitle identity.
+// Depends on RuntimeDialogueResponseTranslations, RuntimeDialogueSubtitleContext, and RuntimePrologueHook.
 // Runtime scope is Fallout 4 1.10.163 only; uses verified Address Library ID 755245.
-// Version-specific logic: installs the 1.10.163 DialogueResponse constructor prologue hook.
-// Source-free policy: delegates to source-free response maps; no visible/source text matching.
+// Version-specific logic: installs the 1.10.163 DialogueResponse constructor hook.
+// Source-free policy: resolves only by INFO/response identity and never matches Source text.
 #include "PCH.h"
 
 #include "110163/RuntimeDialogueResponseHook.h"
@@ -11,6 +11,7 @@
 #include "RuntimeHookWatch.h"
 #include "RuntimePrologueHook.h"
 #include "110163/RuntimeDialogueResponseTranslations.h"
+#include "110163/RuntimeDialogueSubtitleContext.h"
 
 #include "RE/D/DialogueResponse.h"
 #include "RE/T/TESTopicInfo.h"
@@ -52,9 +53,23 @@ namespace
 		{
 			result = out;
 		}
-		RuntimeActivityWatch::RunWork(
-			"DialogueResponse apply constructed response",
-			[&]() { (void)RuntimeDialogueResponseTranslations::ApplyConstructedResponse(result, topicInfo, response); });
+		if (result && topicInfo && response && !result->text.empty())
+		{
+			RuntimeActivityWatch::RunWork("DialogueResponse capture subtitle context", [&]() {
+				const auto rawText = result->text;
+				const auto resolved = RuntimeDialogueResponseTranslations::ResolveResponse(topic, topicInfo, response);
+				if (resolved.translated && !resolved.text.empty())
+				{
+					RuntimeDialogueSubtitleContext::Remember(
+						topicInfo,
+						speaker,
+						rawText,
+						resolved.text,
+						resolved.ordinal,
+						resolved.responseID);
+				}
+			});
+		}
 		return result;
 	}
 
