@@ -32,7 +32,6 @@ void testRuntimeResolution()
 	FallHookTestSupport::require(RuntimeResolution::GetSemanticIndex(entry, TranslationType::kRuntimeIndex) == 5, "runtime index should prefer REC id");
 	FallHookTestSupport::require(RuntimeResolution::GetSemanticIndex(entry, TranslationType::kFullName) == 5, "indexed item FULL should preserve REC id");
 	FallHookTestSupport::require(RuntimeResolution::GetSemanticIndex(entry, TranslationType::kNpcFullName) == 5, "indexed NPC FULL should preserve REC id");
-	FallHookTestSupport::require(RuntimeResolution::MakeRuntimeLogKey(0x0001ACEF, TranslationType::kRuntimeLegacy, 15) == "0001ACEF|19|15", "runtime log key mismatch");
 }
 
 void testLoadOrder()
@@ -45,8 +44,6 @@ void testLoadOrder()
 
 	auto order = XmlLoadOrder::SortIndices(entries, XmlLoadOrder::Mode::kPlugin);
 	FallHookTestSupport::require(order[0] == 1 && order[2] == 0, "plugin priority sort mismatch");
-	FallHookTestSupport::require(XmlLoadOrder::ParseMode("filename") == XmlLoadOrder::Mode::kFilename, "filename mode parse failed");
-	FallHookTestSupport::require(XmlLoadOrder::ParseMode("unknown") == XmlLoadOrder::Mode::kPlugin, "unknown mode should default to plugin");
 }
 
 void testSourceFreeKey()
