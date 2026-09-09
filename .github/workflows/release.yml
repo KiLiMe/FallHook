@@ -1,0 +1,84 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      commonlibf4_ref:
+        description: 'CommonLibF4 分支 / tag / commit 用于发布构建'
+        required: false
+        default: 'main'
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-2022
+    env:
+      VCPKG_ROOT: ${{ env.VCPKG_INSTALLATION_ROOT }}
+      COMMONLIBF4_REF: ${{ github.event.inputs.commonlibf4_ref || 'main' }}
+      COMMONLIBF4_DIR: ${{ github.workspace }}/../CommonLibF4
+
+    steps:
+      - name: Checkout FallHook
+        uses: actions/checkout@v4
+
+      - name: Set up MSBuild (Visual Studio 2022)
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Locate vcpkg
+        shell: pwsh
+        run: |
+          Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
+          if (-not $env:VCPKG_ROOT) {
+            throw "vcpkg not found on runner (VCPKG_INSTALLATION_ROOT is empty)"
+          }
+
+      - name: Clone CommonLibF4 (recursive)
+        shell: pwsh
+        run: |
+          $dir = "$env:COMMONLIBF4_DIR"
+          if (-not (Test-Path "$dir/include/F4SE/F4SE.h")) {
+            git clone --depth 1 --recursive --branch "$env:COMMONLIBF4_REF" `
+              https://github.com/Ryan-rsm-McKenzie/CommonLibF4.git "$dir"
+          }
+          Test-Path "$dir/include/F4SE/F4SE.h"
+          Test-Path "$dir/lib/commonlib-shared/include/REX/REX.h"
+
+      - name: Configure (cmake --preset fo4)
+        shell: pwsh
+        run: cmake --preset fo4
+
+      - name: Build FallHook.dll (Release)
+        shell: pwsh
+        run: cmake --build build --config Release --target FallHook
+
+      - name: Build and run unit tests
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --target FallHookCoreTests
+          ctest --test-dir build -C Release --output-on-failure
+
+      - name: Package release zip
+        shell: pwsh
+        run: |
+          # deploy/F4SE/Plugins/FallHook.dll 已由 POST_BUILD 生成
+          $plugins = Join-Path $env:GITHUB_WORKSPACE 'build\deploy\F4SE\Plugins'
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'config\FallHook.ini') `
+                    (Join-Path $plugins 'FallHook.ini') -Force
+          $staging = Join-Path $env:GITHUB_WORKSPACE 'build\deploy'
+          $zip = Join-Path $env:GITHUB_WORKSPACE "FallHook-$($env:GITHUB_REF_NAME).zip"
+          # 压缩 deploy\F4SE 目录，使压缩包内含 F4SE\Plugins\...
+          Compress-Archive -Path (Join-Path $staging 'F4SE') -DestinationPath $zip -Force
+          Write-Host "Created: $zip"
+          Get-Item $zip | Select-Object Name, Length
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: FallHook-${{ github.ref_name }}.zip
+          generate_release_notes: true

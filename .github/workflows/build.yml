@@ -1,0 +1,92 @@
+name: build
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - 'NOTICE.md'
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      commonlibf4_ref:
+        description: 'CommonLibF4 分支 / tag / commit 供 CI 使用'
+        required: false
+        default: 'main'
+        type: string
+
+jobs:
+  build:
+    runs-on: windows-2022
+    env:
+      # GitHub 官方 Windows runner 预装 vcpkg 于 VCPKG_INSTALLATION_ROOT
+      VCPKG_ROOT: ${{ env.VCPKG_INSTALLATION_ROOT }}
+      # FallHook 需要 CommonLibF4 在同级目录 (默认 ../CommonLibF4)
+      COMMONLIBF4_REF: ${{ github.event.inputs.commonlibf4_ref || 'main' }}
+      COMMONLIBF4_DIR: ${{ github.workspace }}/../CommonLibF4
+
+    steps:
+      - name: Checkout FallHook
+        uses: actions/checkout@v4
+
+      - name: Set up MSBuild (Visual Studio 2022)
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Locate vcpkg
+        shell: pwsh
+        run: |
+          Write-Host "VCPKG_INSTALLATION_ROOT=$env:VCPKG_INSTALLATION_ROOT"
+          if (-not $env:VCPKG_ROOT) {
+            throw "vcpkg not found on runner (VCPKG_INSTALLATION_ROOT is empty)"
+          }
+          Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
+          git -C "$env:VCPKG_ROOT" rev-parse --is-inside-work-tree 2>$null | Out-Null
+          Write-Host "vcpkg is a git checkout: $($LASTEXITCODE -eq 0)"
+
+      - name: Clone CommonLibF4 (recursive)
+        shell: pwsh
+        run: |
+          $dir = "$env:COMMONLIBF4_DIR"
+          if (-not (Test-Path "$dir/include/F4SE/F4SE.h")) {
+            git clone --depth 1 --recursive --branch "$env:COMMONLIBF4_REF" `
+              https://github.com/Ryan-rsm-McKenzie/CommonLibF4.git "$dir"
+          }
+          Write-Host "CommonLibF4 ref: $env:COMMONLIBF4_REF"
+          Write-Host "CommonLibF4 dir: $dir"
+          Test-Path "$dir/include/F4SE/F4SE.h"
+          Test-Path "$dir/lib/commonlib-shared/include/REX/REX.h"
+
+      - name: Configure (cmake --preset fo4)
+        shell: pwsh
+        run: |
+          cmake --preset fo4
+          # 首次配置会通过 vcpkg manifest 自动安装 spdlog / zlib，耗时较长
+
+      - name: Build FallHook.dll (Release)
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --target FallHook
+
+      - name: Build and run unit tests
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --target FallHookCoreTests
+          ctest --test-dir build -C Release --output-on-failure
+
+      - name: Assemble deploy package
+        shell: pwsh
+        run: |
+          $plugins = (Resolve-Path (Join-Path $env:GITHUB_WORKSPACE 'build\deploy\F4SE\Plugins')).Path
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'config\FallHook.ini') `
+                    (Join-Path $plugins 'FallHook.ini') -Force
+          Write-Host "Deploy contents:"
+          Get-ChildItem $plugins | Select-Object Name, Length
+
+      - name: Upload FallHook artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FallHook
+          path: |
+            build/deploy/F4SE/
+          if-no-files-found: error
