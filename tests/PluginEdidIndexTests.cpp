@@ -41,12 +41,15 @@ void testPluginEdidIndex()
 	FallHookTestSupport::appendVector(plugin, FallHookTestSupport::record("NPC_", 0x00001003, duplicateNpc));
 
 	std::vector<std::uint8_t> info;
-	std::vector<std::uint8_t> trdt(13, 0);
-	trdt[12] = 7;
-	FallHookTestSupport::appendVector(info, FallHookTestSupport::subrecord("TRDT", trdt));
+	auto makeTrda = [](std::uint32_t responseID) {
+		std::vector<std::uint8_t> payload;
+		FallHookTestSupport::appendU32(payload, 0); // offset 0 (unused prefix)
+		FallHookTestSupport::appendU32(payload, responseID); // offset 4 = response ID
+		return payload;
+	};
+	FallHookTestSupport::appendVector(info, FallHookTestSupport::subrecord("TRDA", makeTrda(7)));
 	FallHookTestSupport::appendVector(info, FallHookTestSupport::subrecord("NAM1", FallHookTestSupport::bytesU32(0x0000A001)));
-	trdt[12] = 9;
-	FallHookTestSupport::appendVector(info, FallHookTestSupport::subrecord("TRDT", trdt));
+	FallHookTestSupport::appendVector(info, FallHookTestSupport::subrecord("TRDA", makeTrda(9)));
 	FallHookTestSupport::appendVector(info, FallHookTestSupport::subrecord("NAM1", FallHookTestSupport::bytesU32(0x0000A003)));
 	FallHookTestSupport::appendVector(info, FallHookTestSupport::subrecord("RNAM", FallHookTestSupport::bytesU32(0x0000A002)));
 	FallHookTestSupport::appendVector(plugin, FallHookTestSupport::record("INFO", 0x00001234, info));
