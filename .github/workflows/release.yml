@@ -22,10 +22,10 @@ jobs:
   release:
     runs-on: windows-2022
     env:
-      # 说明: runner 机器变量 VCPKG_INSTALLATION_ROOT 不能在 job 级 env 用 ${{ env.* }} 引用，
-      # 因此在下方 "Locate vcpkg" 步骤中把 VCPKG_ROOT 写入 $GITHUB_ENV。
+      # 说明: job 级 env 的表达式只支持 github/needs/strategy/matrix/vars/secrets/inputs，
+      # 不能引用 runner.* 或 env.*（Unrecognized named-value），因此 VCPKG_ROOT 与
+      # VCPKG_BINARY_SOURCES 都在下方 "Locate vcpkg" 步骤里写入 $GITHUB_ENV。
       COMMONLIBF4_DIR: ${{ github.workspace }}/../CommonLibF4
-      VCPKG_BINARY_SOURCES: clear;files,${{ runner.temp }}/vcpkg_cache,readwrite
 
     steps:
       - name: Checkout FallHook
@@ -58,6 +58,10 @@ jobs:
           }
           "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
           Write-Host "VCPKG_ROOT exported -> $env:VCPKG_INSTALLATION_ROOT"
+          # vcpkg 二进制缓存目录：与上方 actions/cache 的 path 对齐（CMakePresets 已移除 -binarycaching）
+          $binCache = "$($env:RUNNER_TEMP -replace '\\','/')/vcpkg_cache"
+          "VCPKG_BINARY_SOURCES=clear;files,$binCache,readwrite" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "VCPKG_BINARY_SOURCES exported -> $binCache"
 
       - name: Sync CommonLibF4 (incremental clone/refresh)
         shell: pwsh
