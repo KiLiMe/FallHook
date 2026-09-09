@@ -240,6 +240,39 @@ namespace TranslationPipeline
 		return files;
 	}
 
+	// Overlay XMLs are sID-only and are never part of the cached catalog, so they
+	// are parsed on every build: on a cache hit the catalog is reused but the
+	// overlay map would otherwise stay empty (SetMap() is only called here).
+	void buildOverlay(
+		const TranslationPipelineOptions& options,
+		std::span<const std::filesystem::path> overlayXmlFiles,
+		TranslationPipelineResult& result)
+	{
+		RuntimeStringOverlay::OverlayMap overlayMap;
+		for (const auto& xmlPath : overlayXmlFiles)
+		{
+			const PipelinePhase phase{ options, std::string{ "parse overlay XML " } + xmlPath.filename().string() };
+			auto parsed = XmlTranslationParser::ParseFile(xmlPath);
+			if (!parsed.success)
+			{
+				result.errors.push_back({ xmlPath, parsed.error });
+				continue;
+			}
+
+			for (const auto& entry : parsed.file.entries)
+			{
+				if (!entry.stringID || entry.dest.empty())
+				{
+					continue;
+				}
+				overlayMap[*entry.stringID] = entry.dest;
+			}
+			++result.parsedXmlFiles;
+		}
+		RuntimeStringOverlay::SetMap(std::move(overlayMap));
+		result.overlayEntries = RuntimeStringOverlay::Count();
+	}
+
 	TranslationPipelineResult Build(const TranslationPipelineOptions& options)
 	{
 		const PipelinePhase totalPhase{ options, "build total" };
@@ -259,12 +292,23 @@ namespace TranslationPipeline
 		result.discoveredXmlFiles = xmlFiles.size() + overlayXmlFiles.size();
 		result.cachePath = TranslationPipelineCache::CachePath(options);
 
+		// Overlay is parsed before the cache lookup so it is populated on cache
+		// hits too; the cached catalog never contains overlay entries.
+		buildOverlay(options, overlayXmlFiles, result);
+
 		{
 			const PipelinePhase phase{ options, "load runtime cache" };
 			std::vector<std::filesystem::path> allXmlFiles = xmlFiles;
 			allXmlFiles.insert(allXmlFiles.end(), overlayXmlFiles.begin(), overlayXmlFiles.end());
 			if (auto cached = TranslationPipelineCache::Load(options, allXmlFiles))
 			{
+				cached->overlayEntries = result.overlayEntries;
+				cached->discoveredXmlFiles = result.discoveredXmlFiles;
+				cached->parsedXmlFiles += result.parsedXmlFiles;
+				for (const auto& error : result.errors)
+				{
+					cached->errors.push_back(error);
+				}
 				return std::move(*cached);
 			}
 		}
@@ -295,33 +339,6 @@ namespace TranslationPipeline
 			++result.parsedXmlFiles;
 		}
 
-		// Process overlay XML files: sID-only, no plugin binding required
-		RuntimeStringOverlay::OverlayMap overlayMap;
-		for (const auto& xmlPath : overlayXmlFiles)
-		{
-			const PipelinePhase phase{ options, std::string{ "parse overlay XML " } + xmlPath.filename().string() };
-			auto parsed = XmlTranslationParser::ParseFile(xmlPath);
-			if (!parsed.success)
-			{
-				result.errors.push_back({ xmlPath, parsed.error });
-				continue;
-			}
-
-			for (const auto& entry : parsed.file.entries)
-			{
-				if (!entry.stringID || entry.dest.empty())
-				{
-					continue;
-				}
-				overlayMap[*entry.stringID] = entry.dest;
-			}
-			++result.parsedXmlFiles;
-		}
-		if (!overlayMap.empty())
-		{
-			RuntimeStringOverlay::SetMap(std::move(overlayMap));
-		}
-		result.overlayEntries = RuntimeStringOverlay::Count();
 
 		std::unordered_map<std::string, PluginEdidIndex> pluginIndexes;
 		for (const auto& parsed : parsedFiles)
@@ -374,4 +391,5 @@ namespace TranslationPipeline
 		return result;
 	}
 }
+
 

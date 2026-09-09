@@ -5,6 +5,7 @@
 // Source-free policy: verifies catalog keys are stable identity keys, not source text.
 #include "FallHookTestSupport.h"
 #include "PluginEdidIndex.h"
+#include "RuntimeStringOverlay.h"
 #include "TranslationCatalog.h"
 #include "TranslationPipeline.h"
 #include "TranslationPreparedData.h"
@@ -405,6 +406,49 @@ void testTranslationPipeline()
 	FallHookTestSupport::require(cached.catalog.records[0].data.replacerText == "New", "cached pipeline destination mismatch");
 	FallHookTestSupport::require(cached.prepared.constApply.records.size() == 1, "cached prepared const-apply section missing");
 	FallHookTestSupport::require(cached.prepared.constApply.records[0].data.replacerText == "New", "cached prepared destination mismatch");
+
+	// Overlay must stay populated on cache hits: the cached catalog never
+	// contains overlay entries, so a regression here silently drops every
+	// ESP-independent translation from the second launch onward.
+	// Use an isolated root so the overlay run writes its own cache: the cache
+	// validation compares the stored file list against the current one, and the
+	// overlay run stores an extra file that a later non-overlay run would not match.
+	const auto overlayRoot = std::filesystem::temp_directory_path() / std::format("FallHook_overlay_{}", stamp);
+	const auto overlayDataDir = overlayRoot / "Data";
+	const auto overlayXmlDir = overlayDataDir / "F4SE" / "Plugins" / "FallHook";
+	const auto overlaySubDir = overlayXmlDir / "Overlay";
+	std::filesystem::create_directories(overlaySubDir);
+	FallHookTestSupport::writeBinaryFile(overlayDataDir / "Example.esp", pluginBytes);
+	{
+		std::ofstream mainXml(overlayXmlDir / "Example.xml", std::ios::binary);
+		mainXml << R"(<SSTXMLRessources><Params><Addon>Example.esp</Addon></Params><Content>
+<String sID="0000A111"><EDID>PipelineQuest</EDID><REC id="99">QUST:NNAM</REC><Source>Old</Source><Dest>New</Dest></String>
+</Content></SSTXMLRessources>)";
+		mainXml.close();
+
+		std::ofstream overlayXml(overlaySubDir / "010_overlay.xml", std::ios::binary);
+		overlayXml << R"(<SSTXMLRessources><Params><Addon>__overlay__</Addon></Params><Content>
+<String sID="0000B222"><EDID></EDID><REC>FULL:NAME</REC><Source></Source><Dest>OverlayText</Dest></String>
+</Content></SSTXMLRessources>)";
+		overlayXml.close();
+	}
+
+	TranslationPipelineOptions overlayOptions;
+	overlayOptions.xmlDirectory = overlayXmlDir;
+	overlayOptions.overlayDirectory = overlaySubDir;
+	overlayOptions.dataDirectory = overlayDataDir;
+	overlayOptions.plugins.push_back({ "Example.esp", overlayDataDir / "Example.esp", 3 });
+
+	const auto overlayFirst = TranslationPipeline::Build(overlayOptions);
+	FallHookTestSupport::require(overlayFirst.overlayEntries == 1, "overlay entries were not loaded on first build");
+
+	const auto overlayCached = TranslationPipeline::Build(overlayOptions);
+	FallHookTestSupport::require(overlayCached.loadedFromCache, "overlay build should hit the cache on the second run");
+	FallHookTestSupport::require(overlayCached.overlayEntries == 1, "overlay entries were lost on cache hit");
+	FallHookTestSupport::require(
+		RuntimeStringOverlay::Lookup(0x0000B222) != nullptr && *RuntimeStringOverlay::Lookup(0x0000B222) == "OverlayText",
+		"overlay map was not populated on cache hit");
+	std::filesystem::remove_all(overlayRoot);
 
 	options.runtimePreparedOnly = true;
 	const auto runtimeCached = TranslationPipeline::Build(options);
