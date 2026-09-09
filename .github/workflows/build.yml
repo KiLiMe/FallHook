@@ -50,7 +50,7 @@ jobs:
           $dir = "$env:COMMONLIBF4_DIR"
           if (-not (Test-Path "$dir/include/F4SE/F4SE.h")) {
             git clone --depth 1 --recursive --branch "$env:COMMONLIBF4_REF" `
-              https://github.com/Ryan-rsm-McKenzie/CommonLibF4.git "$dir"
+              https://github.com/libxse/commonlibf4.git "$dir"
           }
           Write-Host "CommonLibF4 ref: $env:COMMONLIBF4_REF"
           Write-Host "CommonLibF4 dir: $dir"
