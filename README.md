@@ -1,89 +1,90 @@
 # FallHook
 
-FallHook is a Fallout 4 F4SE/CommonLibF4 plugin for source-free runtime translation and hook support.
+[English](README.en.md) | 简体中文
 
-It loads xTranslator XML translations at runtime and applies them to in-game text, without
-requiring the original/plugin source strings to be shipped or rebuilt into a new plugin.
+FallHook 是《辐射 4》(Fallout 4) 的 F4SE/CommonLibF4 插件，提供免源码的运行时翻译与 hook 支持。
 
-Target plugin output:
+它在运行时加载 xTranslator XML 翻译并应用到游戏内文本，无需随附原始/插件源字符串，
+也无需重新构建出新的插件。
+
+目标插件输出：
 
 ```text
 Data/F4SE/Plugins/FallHook.dll
 ```
 
-## Runtime Support
+## 运行时支持
 
-| Runtime | Source tree | Notes |
+| 运行时 | 源码树 | 说明 |
 | --- | --- | --- |
-| Fallout 4 1.10.163 | `src/110163/`, `include/110163/` | dedicated module |
-| Fallout 4 1.11.191 | `src/111191/`, `include/111191/` | AE module |
-| Fallout 4 1.11.240 | reused from 1.11.191 | covered by the AE module, no separate tree |
+| Fallout 4 1.10.163 | `src/110163/`、`include/110163/` | 独立模块 |
+| Fallout 4 1.11.191 | `src/111191/`、`include/111191/` | AE 模块 |
+| Fallout 4 1.11.240 | 复用 1.11.191 | 由 AE 模块覆盖，无独立源码树 |
 
-The two runtime trees under `src/<runtime>/` and `include/<runtime>/` own hook offsets and
-runtime layout assumptions. FallHook resolves every hook through the Address Library
-(`REL::ID`), so the AE (1.11.x) module written against 1.11.191 also runs on newer AE patches
-such as 1.11.240 with no code changes — that is why there is no `src/111240/` directory.
+`src/<runtime>/` 与 `include/<runtime>/` 下的两棵运行时源码树各自持有 hook 偏移与运行时
+布局假设。FallHook 通过 Address Library(`REL::ID`) 解析每一个 hook，因此针对 1.11.191
+编写的 AE(1.11.x) 模块无需改动代码，即可在 1.11.240 等更新的 AE 补丁上运行 ——
+这正是没有 `src/111240/` 目录的原因。
 
-## Install
+## 安装
 
-1. Install [F4SE](https://f4se.silverlock.org/) for your Fallout 4 version.
-2. Copy `FallHook.dll` and `FallHook.ini` into:
+1. 为你的《辐射 4》版本安装 [F4SE](https://f4se.silverlock.org/)。
+2. 将 `FallHook.dll` 与 `FallHook.ini` 复制到：
 
    ```text
    <Fallout 4>/Data/F4SE/Plugins/
    ```
 
-3. Place xTranslator XML files in:
+3. 将 xTranslator XML 文件放入：
 
    ```text
    <Fallout 4>/Data/F4SE/Plugins/FallHook/
    ```
 
-## Configuration
+## 配置
 
-Settings live in `Data/F4SE/Plugins/FallHook.ini` (shipped as `config/FallHook.ini`).
-Highlights:
+配置文件位于 `Data/F4SE/Plugins/FallHook.ini`(仓库内为 `config/FallHook.ini`)。常用项：
 
-| Section | Key | Default | Purpose |
+| 小节 | 键 | 默认值 | 用途 |
 | --- | --- | --- | --- |
-| `[XML]` | `LoadOrderMode` | `plugin` | `plugin` follows active plugin order; `filename` uses global filename ascending order |
-| `[InGameTextHook]` | `Enable` | `false` | in-game text hook |
-| `[Watchdog]` | `Enable` | `false` | slow/stuck load and hook warnings |
-| `[ActivityWatchdog]` | `Enable` | `false` | verbose per-hook activity logging for stutter attribution |
-| `[Logging]` | `EnableDebugLog` | `false` | debug trace logging |
+| `[XML]` | `LoadOrderMode` | `plugin` | `plugin` 按激活插件顺序；`filename` 按全局文件名升序 |
+| `[InGameTextHook]` | `Enable` | `false` | 游戏内文本 hook |
+| `[Watchdog]` | `Enable` | `false` | 加载/hook 缓慢或卡死告警 |
+| `[ActivityWatchdog]` | `Enable` | `false` | 逐 hook 详细活动日志，用于卡顿归因 |
+| `[Logging]` | `EnableDebugLog` | `false` | 调试跟踪日志 |
 
-## Build
+## 构建
 
-Prerequisites:
+前置条件：
 
 - Visual Studio 2022
 - CMake 3.21+
-- vcpkg, with `VCPKG_ROOT` set
-- [CommonLibF4](https://github.com/libxse/commonlibf4), with `lib/commonlib-shared` available in that checkout
+- vcpkg，并设置 `VCPKG_ROOT`
+- [CommonLibF4](https://github.com/libxse/commonlibf4)，该 checkout 中需包含 `lib/commonlib-shared`
 
-By default, CMake expects CommonLibF4 at `../CommonLibF4`. Override it if needed:
+默认情况下，CMake 期望 CommonLibF4 位于 `../CommonLibF4`。如需覆盖：
 
 ```powershell
 cmake --preset fo4 -DCOMMONLIBF4_DIR=<path-to-CommonLibF4>
 cmake --build build --config Release --target FallHook
 ```
 
-The default deploy copy goes to `build/deploy/F4SE/Plugins`.
+默认部署副本输出到 `build/deploy/F4SE/Plugins`。
 
-## Tests
+## 测试
 
 ```powershell
 cmake --build build --config Release --target FallHookCoreTests
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-## Continuous Integration
+## 持续集成
 
-| Workflow | Trigger | Result |
+| 工作流 | 触发条件 | 结果 |
 | --- | --- | --- |
-| `build` | push / PR to `main` | builds the plugin, runs unit tests, uploads the `FallHook` artifact |
-| `release` | `v*` tag push | builds, tests, packages `FallHook-<tag>.zip`, publishes a GitHub Release |
+| `build` | push / PR 到 `main` | 构建插件、运行单元测试、上传 `FallHook` 产物 |
+| `release` | 推送 `v*` 标签 | 构建、测试、打包 `FallHook-<tag>.zip` 并发布 GitHub Release |
 
-## License
+## 许可
 
-GPL-3.0. See `LICENSE` and `NOTICE.md`.
+GPL-3.0。详见 `LICENSE` 与 `NOTICE.md`。
