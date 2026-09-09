@@ -66,6 +66,18 @@ namespace
 	void install()
 	{
 		REL::Relocation<std::uintptr_t> target{ kShowSubtitleID };
+
+		// If another plugin has already hooked this function (the first byte is a
+		// jmp instruction), skip installation to avoid trampoline chain breakage.
+		// po3_FloatingSubtitlesF4 is a known concurrent hooker.
+		if (const auto bytes = reinterpret_cast<const std::uint8_t*>(target.address());
+			bytes[0] == 0xE9 || bytes[0] == 0xEB || bytes[0] == 0xFF)
+		{
+			REX::WARN("{} skipped SubtitleManager::ShowSubtitle hook; another plugin has already installed a hook at {:X}.",
+				Plugin::NAME, target.address());
+			return;
+		}
+
 		const auto result = RuntimePrologueHook::InstallJump(
 			target.address(),
 			reinterpret_cast<std::uintptr_t>(showSubtitleThunk),
