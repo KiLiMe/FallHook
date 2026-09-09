@@ -29,13 +29,13 @@ jobs:
 
     steps:
       - name: Checkout FallHook
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up MSBuild (Visual Studio 2022)
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Cache CommonLibF4
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.COMMONLIBF4_DIR }}
           key: commonlibf4-${{ runner.os }}-${{ env.COMMONLIBF4_REF }}
@@ -43,7 +43,7 @@ jobs:
             commonlibf4-${{ runner.os }}-
 
       - name: Cache vcpkg deps (binary cache)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ runner.temp }}/vcpkg_cache
           key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
@@ -130,7 +130,7 @@ jobs:
           Get-Item $zip | Select-Object Name, Length
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: FallHook-${{ github.ref_name }}.zip
           generate_release_notes: true
