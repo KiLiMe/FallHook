@@ -20,6 +20,11 @@ namespace RuntimeVersionDispatcher
 	{
 		std::string_view name;
 		REL::Version runtime;
+		// Runtimes this module additionally covers besides Module::runtime.
+		// Used for newer AE patches that need no hook changes because every
+		// hook is located through the Address Library (REL::ID).
+		// Empty means the module only owns Module::runtime.
+		std::span<const REL::Version> acceptedRuntimes;
 		bool (*Load)(const F4SE::LoadInterface* f4se);
 		void (*HandleMessage)(F4SE::MessagingInterface::Message* message);
 		void (*Shutdown)();

@@ -119,9 +119,18 @@ namespace
 	void Shutdown()
 	{}
 
+	// The AE module was written and verified against 1.11.191. Newer AE patches
+	// reuse it unchanged because every hook uses Address Library REL::ID lookups.
+	// Add a runtime here (not in the dispatcher) when a new AE patch needs no
+	// hook changes.
+	constexpr REL::Version kAcceptedRuntimes[] = {
+		RuntimeVersionDispatcher::kRuntime111240
+	};
+
 	const RuntimeVersionDispatcher::Module kModule{
 		.name = "111191",
 		.runtime = RuntimeVersionDispatcher::kRuntime111191,
+		.acceptedRuntimes = kAcceptedRuntimes,
 		.Load = Load,
 		.HandleMessage = HandleMessage,
 		.Shutdown = Shutdown

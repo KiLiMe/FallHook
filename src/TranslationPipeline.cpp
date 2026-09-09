@@ -5,6 +5,7 @@
 // Source-free policy: uses plugin names, raw form IDs, string IDs, and runtime indexes only.
 #include "TranslationPipeline.h"
 
+#include "RuntimeStringOverlay.h"
 #include "TranslationPipelineCache.h"
 #include "TranslationPreparedData.h"
 #include "XmlTranslationMapping.h"
@@ -216,6 +217,13 @@ namespace TranslationPipeline
 		return files;
 	}
 
+	// Overlay XML files are stored in a separate directory and use only sID-based identity.
+	// They are not bound to any ESP plugin; the <Addon> field is ignored.
+	std::vector<std::filesystem::path> DiscoverOverlayXmlFiles(const std::filesystem::path& directory)
+	{
+		return DiscoverXmlFiles(directory);
+	}
+
 	TranslationPipelineResult Build(const TranslationPipelineOptions& options)
 	{
 		const PipelinePhase totalPhase{ options, "build total" };
@@ -225,12 +233,21 @@ namespace TranslationPipeline
 			const PipelinePhase phase{ options, "discover XML files" };
 			xmlFiles = DiscoverXmlFiles(options.xmlDirectory);
 		}
-		result.discoveredXmlFiles = xmlFiles.size();
+
+		// Also discover overlay XML files from the overlay directory
+		std::vector<std::filesystem::path> overlayXmlFiles;
+		{
+			const PipelinePhase phase{ options, "discover overlay XML files" };
+			overlayXmlFiles = DiscoverOverlayXmlFiles(options.overlayDirectory);
+		}
+		result.discoveredXmlFiles = xmlFiles.size() + overlayXmlFiles.size();
 		result.cachePath = TranslationPipelineCache::CachePath(options);
 
 		{
 			const PipelinePhase phase{ options, "load runtime cache" };
-			if (auto cached = TranslationPipelineCache::Load(options, xmlFiles))
+			std::vector<std::filesystem::path> allXmlFiles = xmlFiles;
+			allXmlFiles.insert(allXmlFiles.end(), overlayXmlFiles.begin(), overlayXmlFiles.end());
+			if (auto cached = TranslationPipelineCache::Load(options, allXmlFiles))
 			{
 				return std::move(*cached);
 			}
@@ -261,6 +278,34 @@ namespace TranslationPipeline
 			parsedFiles.push_back({ std::move(parsed.file), std::move(*plugin) });
 			++result.parsedXmlFiles;
 		}
+
+		// Process overlay XML files: sID-only, no plugin binding required
+		RuntimeStringOverlay::OverlayMap overlayMap;
+		for (const auto& xmlPath : overlayXmlFiles)
+		{
+			const PipelinePhase phase{ options, std::string{ "parse overlay XML " } + xmlPath.filename().string() };
+			auto parsed = XmlTranslationParser::ParseFile(xmlPath);
+			if (!parsed.success)
+			{
+				result.errors.push_back({ xmlPath, parsed.error });
+				continue;
+			}
+
+			for (const auto& entry : parsed.file.entries)
+			{
+				if (!entry.stringID || entry.dest.empty())
+				{
+					continue;
+				}
+				overlayMap[*entry.stringID] = entry.dest;
+			}
+			++result.parsedXmlFiles;
+		}
+		if (!overlayMap.empty())
+		{
+			RuntimeStringOverlay::SetMap(std::move(overlayMap));
+		}
+		result.overlayEntries = RuntimeStringOverlay::Count();
 
 		std::unordered_map<std::string, PluginEdidIndex> pluginIndexes;
 		for (const auto& parsed : parsedFiles)
@@ -306,8 +351,11 @@ namespace TranslationPipeline
 		}
 		{
 			const PipelinePhase phase{ options, "save runtime cache" };
-			result.savedCache = TranslationPipelineCache::Save(options, xmlFiles, result);
+			std::vector<std::filesystem::path> allXmlFiles = xmlFiles;
+			allXmlFiles.insert(allXmlFiles.end(), overlayXmlFiles.begin(), overlayXmlFiles.end());
+			result.savedCache = TranslationPipelineCache::Save(options, allXmlFiles, result);
 		}
 		return result;
 	}
 }
+

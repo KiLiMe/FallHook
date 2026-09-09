@@ -121,6 +121,7 @@ namespace RuntimePreload
 
 			TranslationPipelineOptions options;
 			options.xmlDirectory = xmlDirectory;
+			options.overlayDirectory = xmlDirectory / "Overlay";
 			options.dataDirectory = dataDirectory;
 			options.progress = pipelineProgress;
 			options.loadOrderMode = XmlLoadOrder::Mode::kPlugin;
@@ -142,7 +143,7 @@ namespace RuntimePreload
 				result = TranslationPipeline::Build(options);
 			}
 			REX::INFO(
-				"{} source-free catalog built: cacheHit={} cacheSaved={} runtimePreparedOnly={} cache={} discoveredXml={} parsedXml={} missingPlugin={} pluginIndexesLoaded={} pluginIndexesFailed={} records={} accepted={} overwritten={} sidIndexes={} skippedUnknown={} skippedNoIdentity={} skippedEmptyDest={} errors={}.",
+				"{} source-free catalog built: cacheHit={} cacheSaved={} runtimePreparedOnly={} cache={} discoveredXml={} parsedXml={} missingPlugin={} pluginIndexesLoaded={} pluginIndexesFailed={} overlayEntries={} records={} accepted={} overwritten={} sidIndexes={} skippedUnknown={} skippedNoIdentity={} skippedEmptyDest={} errors={}.",
 				Plugin::NAME,
 				result.loadedFromCache,
 				result.savedCache,
@@ -153,6 +154,7 @@ namespace RuntimePreload
 				result.skippedMissingPlugin,
 				result.loadedPluginIndexes,
 				result.failedPluginIndexes,
+				result.overlayEntries,
 				result.catalog.records.empty() ? result.catalog.acceptedEntries : result.catalog.records.size(),
 				result.catalog.acceptedEntries,
 				result.catalog.overwrittenEntries,

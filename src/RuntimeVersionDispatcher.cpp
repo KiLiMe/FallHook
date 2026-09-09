@@ -17,10 +17,10 @@ namespace
 		&Runtime111191::RuntimeModule111191::GetModule()
 	};
 
-	// A module owns one concrete runtime layout. The AE (1.11.x) module was
-	// written and verified against 1.11.191; because FallHook locates every
-	// hook through the Address Library (REL::ID), the same AE module also runs
-	// on newer AE patches such as 1.11.240 without code changes.
+	// A module owns one concrete runtime layout. Newer AE patches often need no
+	// hook changes because FallHook locates every hook through the Address
+	// Library (REL::ID); such runtimes are listed in Module::acceptedRuntimes
+	// instead of adding another branch here.
 	[[nodiscard]] bool ModuleAccepts(
 		const RuntimeVersionDispatcher::Module& a_module,
 		const REL::Version& a_runtime) noexcept
@@ -29,9 +29,13 @@ namespace
 			return true;
 		}
 
-		// AE family: 1.11.191 module also covers 1.11.240.
-		return a_module.runtime == RuntimeVersionDispatcher::kRuntime111191 &&
-			a_runtime == RuntimeVersionDispatcher::kRuntime111240;
+		for (const auto& accepted : a_module.acceptedRuntimes) {
+			if (accepted == a_runtime) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 }
 

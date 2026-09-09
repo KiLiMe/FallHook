@@ -6,6 +6,7 @@
 #include "PCH.h"
 
 #include "RuntimeApplySettings.h"
+#include "RuntimeStringOverlay.h"
 #include "110163/RuntimeFormResolver.h"
 #include "110163/RuntimeFullNameLoadTranslations.h"
 #include "SourceFreeTranslationKey.h"
@@ -225,6 +226,18 @@ namespace RuntimeFullNameLoadTranslations
 		if (!form)
 		{
 			return {};
+		}
+
+		// Overlay sID lookup: ESP-independent override, highest priority
+		if (stringID)
+		{
+			if (const auto* overlayText = RuntimeStringOverlay::Lookup(*stringID))
+			{
+				return LookupResult{
+					.text = overlayText,
+					.source = LookupSource::kStringID
+				};
+			}
 		}
 
 		if (stringID)

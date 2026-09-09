@@ -15,7 +15,8 @@ namespace XmlLoadOrder
 	enum class Mode
 	{
 		kPlugin,
-		kFilename
+		kFilename,
+		kLayer
 	};
 
 	struct SortEntry
@@ -24,6 +25,8 @@ namespace XmlLoadOrder
 		std::string file;
 		std::string addon;
 		std::uint32_t pluginPriority{ 0 };
+		std::uint32_t layerPriority{ 0 };
+		bool isOverlay{ false };
 	};
 
 	std::vector<std::size_t> SortIndices(std::span<const SortEntry> entries, Mode mode);

@@ -120,6 +120,8 @@ namespace
 	const RuntimeVersionDispatcher::Module kModule{
 		.name = "110163",
 		.runtime = RuntimeVersionDispatcher::kRuntime110163,
+		// Owns 1.10.163 only; no other runtime shares this layout.
+		.acceptedRuntimes = {},
 		.Load = Load,
 		.HandleMessage = HandleMessage,
 		.Shutdown = Shutdown

@@ -97,6 +97,7 @@ set(FALLHOOK_CORE_SOURCES
     src/PluginEdidIndexInnr.cpp
     src/PluginEdidIndexLookup.cpp
     src/RuntimeResolution.cpp
+    src/RuntimeStringOverlay.cpp
     src/SourceFreeTranslationKey.cpp
     src/TextNormalization.cpp
     src/TranslationCatalog.cpp
