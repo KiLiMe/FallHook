@@ -19,7 +19,8 @@ jobs:
   release:
     runs-on: windows-2022
     env:
-      VCPKG_ROOT: ${{ env.VCPKG_INSTALLATION_ROOT }}
+      # 注意: runner 机器变量 VCPKG_INSTALLATION_ROOT 不能在 job 级 env 用 ${{ env.* }} 引用，
+      # 因此在下方 "Locate vcpkg" 步骤中把 VCPKG_ROOT 写入 $GITHUB_ENV。
       COMMONLIBF4_REF: ${{ github.event.inputs.commonlibf4_ref || 'main' }}
       COMMONLIBF4_DIR: ${{ github.workspace }}/../CommonLibF4
 
@@ -30,13 +31,15 @@ jobs:
       - name: Set up MSBuild (Visual Studio 2022)
         uses: microsoft/setup-msbuild@v2
 
-      - name: Locate vcpkg
+      - name: Locate vcpkg and export VCPKG_ROOT
         shell: pwsh
         run: |
-          Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
-          if (-not $env:VCPKG_ROOT) {
+          Write-Host "VCPKG_INSTALLATION_ROOT=$env:VCPKG_INSTALLATION_ROOT"
+          if (-not $env:VCPKG_INSTALLATION_ROOT) {
             throw "vcpkg not found on runner (VCPKG_INSTALLATION_ROOT is empty)"
           }
+          "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "VCPKG_ROOT exported -> $env:VCPKG_INSTALLATION_ROOT"
 
       - name: Clone CommonLibF4 (recursive)
         shell: pwsh
@@ -46,12 +49,16 @@ jobs:
             git clone --depth 1 --recursive --branch "$env:COMMONLIBF4_REF" `
               https://github.com/Ryan-rsm-McKenzie/CommonLibF4.git "$dir"
           }
+          Write-Host "CommonLibF4 ref: $env:COMMONLIBF4_REF"
+          Write-Host "CommonLibF4 dir: $dir"
           Test-Path "$dir/include/F4SE/F4SE.h"
           Test-Path "$dir/lib/commonlib-shared/include/REX/REX.h"
 
       - name: Configure (cmake --preset fo4)
         shell: pwsh
-        run: cmake --preset fo4
+        run: |
+          Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
+          cmake --preset fo4
 
       - name: Build FallHook.dll (Release)
         shell: pwsh

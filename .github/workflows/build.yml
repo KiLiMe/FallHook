@@ -20,9 +20,9 @@ jobs:
   build:
     runs-on: windows-2022
     env:
-      # GitHub 官方 Windows runner 预装 vcpkg 于 VCPKG_INSTALLATION_ROOT
-      VCPKG_ROOT: ${{ env.VCPKG_INSTALLATION_ROOT }}
       # FallHook 需要 CommonLibF4 在同级目录 (默认 ../CommonLibF4)
+      # 注意: runner 机器变量 VCPKG_INSTALLATION_ROOT 不能在 job 级 env 用 ${{ env.* }} 引用，
+      # 因此在下方 "Locate vcpkg" 步骤中把 VCPKG_ROOT 写入 $GITHUB_ENV。
       COMMONLIBF4_REF: ${{ github.event.inputs.commonlibf4_ref || 'main' }}
       COMMONLIBF4_DIR: ${{ github.workspace }}/../CommonLibF4
 
@@ -33,16 +33,16 @@ jobs:
       - name: Set up MSBuild (Visual Studio 2022)
         uses: microsoft/setup-msbuild@v2
 
-      - name: Locate vcpkg
+      - name: Locate vcpkg and export VCPKG_ROOT
         shell: pwsh
         run: |
           Write-Host "VCPKG_INSTALLATION_ROOT=$env:VCPKG_INSTALLATION_ROOT"
-          if (-not $env:VCPKG_ROOT) {
+          if (-not $env:VCPKG_INSTALLATION_ROOT) {
             throw "vcpkg not found on runner (VCPKG_INSTALLATION_ROOT is empty)"
           }
-          Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
-          git -C "$env:VCPKG_ROOT" rev-parse --is-inside-work-tree 2>$null | Out-Null
-          Write-Host "vcpkg is a git checkout: $($LASTEXITCODE -eq 0)"
+          # GitHub 官方 windows runner 预装 vcpkg；导出 VCPKG_ROOT 供后续步骤/CMake 使用
+          "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "VCPKG_ROOT exported -> $env:VCPKG_INSTALLATION_ROOT"
 
       - name: Clone CommonLibF4 (recursive)
         shell: pwsh
@@ -60,6 +60,7 @@ jobs:
       - name: Configure (cmake --preset fo4)
         shell: pwsh
         run: |
+          Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
           cmake --preset fo4
           # 首次配置会通过 vcpkg manifest 自动安装 spdlog / zlib，耗时较长
 
