@@ -48,7 +48,7 @@ Highlights:
 
 | Section | Key | Default | Purpose |
 | --- | --- | --- | --- |
-| `[XML]` | `LoadOrderMode` | `plugin` | `plugin` follows active plugin order; `filename` uses global filename ascending order |
+| `[XML]` | `LoadOrderMode` | `plugin` | `plugin` follows active plugin order; `filename` uses global filename ascending order; `layer` uses the numeric filename prefix (`010_` < `050_` < `999_`, `50` when absent) and later files overwrite earlier ones |
 | `[InGameTextHook]` | `Enable` | `false` | in-game text hook |
 | `[Watchdog]` | `Enable` | `false` | slow/stuck load and hook warnings |
 | `[ActivityWatchdog]` | `Enable` | `false` | verbose per-hook activity logging for stutter attribution |

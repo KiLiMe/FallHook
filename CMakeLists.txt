@@ -136,6 +136,7 @@ set(FALLHOOK_SHARED_PLUGIN_SOURCES
     src/RuntimeSaveLoadGapTrace.cpp
     src/RuntimeVersionDispatcher.cpp
     src/RuntimeWatchdogSettings.cpp
+    src/RuntimeXmlSettings.cpp
 )
 
 set(FALLHOOK_RUNTIME_110163_SOURCES

@@ -9,34 +9,7 @@
 
 namespace
 {
-	// Parse a numeric prefix from a filename for layer sorting.
-	// e.g. "010_Fallout4.xml" -> 10, "Fallout4.xml" -> 50 (default)
-	std::uint32_t parseLayerPriority(const std::string& filename)
-	{
-		constexpr std::uint32_t kDefaultLayer{ 50 };
-		std::uint32_t value = 0;
-		bool hasDigits = false;
-		for (auto ch : filename)
-		{
-			if (ch >= '0' && ch <= '9')
-			{
-				value = value * 10 + static_cast<std::uint32_t>(ch - '0');
-				hasDigits = true;
-			}
-			else if (ch == '_' || ch == '-' || ch == ' ')
-			{
-				if (hasDigits)
-				{
-					return value;
-				}
-			}
-			else
-			{
-				return hasDigits ? value : kDefaultLayer;
-			}
-		}
-		return hasDigits ? value : kDefaultLayer;
-	}
+	constexpr std::uint32_t kDefaultLayer{ 50 };
 }
 
 namespace XmlLoadOrder
@@ -62,13 +35,20 @@ namespace XmlLoadOrder
 					return left.isOverlay < right.isOverlay;
 				}
 
-				// Within the same group, sort by layer priority, then filename
+				// Within the same group, sort by layer priority, then filename.
+				// Fall back to index so equal (priority, file) pairs keep a
+				// deterministic strict weak ordering.
 				if (left.layerPriority != right.layerPriority)
 				{
 					return left.layerPriority < right.layerPriority;
 				}
 
-				return left.file < right.file;
+				if (left.file != right.file)
+				{
+					return left.file < right.file;
+				}
+
+				return left.index < right.index;
 			}
 
 			if (mode == Mode::kPlugin)
@@ -90,5 +70,36 @@ namespace XmlLoadOrder
 		});
 
 		return order;
+	}
+
+	std::uint32_t LayerPriority(std::string_view filename)
+	{
+		std::uint32_t value = 0;
+		bool hasDigits = false;
+		for (const auto ch : filename)
+		{
+			if (ch >= '0' && ch <= '9')
+			{
+				// Guard against overflow on absurdly long numeric prefixes.
+				if (value > (0xFFFFFFFFu - static_cast<std::uint32_t>(ch - '0')) / 10)
+				{
+					return kDefaultLayer;
+				}
+				value = value * 10 + static_cast<std::uint32_t>(ch - '0');
+				hasDigits = true;
+			}
+			else if (ch == '_' || ch == '-' || ch == ' ')
+			{
+				if (hasDigits)
+				{
+					return value;
+				}
+			}
+			else
+			{
+				return hasDigits ? value : kDefaultLayer;
+			}
+		}
+		return hasDigits ? value : kDefaultLayer;
 	}
 }

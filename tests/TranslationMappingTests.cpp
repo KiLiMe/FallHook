@@ -46,6 +46,36 @@ void testLoadOrder()
 	FallHookTestSupport::require(order[0] == 1 && order[2] == 0, "plugin priority sort mismatch");
 }
 
+void testLayerPriority()
+{
+	FallHookTestSupport::require(XmlLoadOrder::LayerPriority("010_Fallout4.xml") == 10, "numeric prefix 010 should be 10");
+	FallHookTestSupport::require(XmlLoadOrder::LayerPriority("999_last.xml") == 999, "numeric prefix 999 should be 999");
+	FallHookTestSupport::require(XmlLoadOrder::LayerPriority("7_short.xml") == 7, "numeric prefix 7 should be 7");
+	FallHookTestSupport::require(XmlLoadOrder::LayerPriority("10-thing.xml") == 10, "dash separator should be accepted");
+	FallHookTestSupport::require(XmlLoadOrder::LayerPriority("Fallout4.xml") == 50, "files without a prefix use the default layer");
+	FallHookTestSupport::require(XmlLoadOrder::LayerPriority("99999999999999999999_x.xml") == 50, "overflowing prefix falls back to the default");
+}
+
+void testLayerOrder()
+{
+	std::vector<XmlLoadOrder::SortEntry> entries{
+		{ 0, "050_middle.xml", "", 0, 50, false },
+		{ 1, "999_last.xml", "", 0, 999, false },
+		{ 2, "010_first.xml", "", 0, 10, false },
+		{ 3, "overlay_low.xml", "", 0, 10, true },
+		{ 4, "overlay_high.xml", "", 0, 900, true }
+	};
+
+	auto order = XmlLoadOrder::SortIndices(entries, XmlLoadOrder::Mode::kLayer);
+
+	// Normal files sort by layer priority first, overlays always come last.
+	FallHookTestSupport::require(order[0] == 2, "lowest layer should sort first");
+	FallHookTestSupport::require(order[1] == 0, "middle layer should sort second");
+	FallHookTestSupport::require(order[2] == 1, "highest normal layer should sort third");
+	FallHookTestSupport::require(order[3] == 3, "overlays sort after normal files");
+	FallHookTestSupport::require(order[4] == 4, "highest overlay layer should sort last");
+}
+
 void testSourceFreeKey()
 {
 	SourceFreeTranslationKey key;
@@ -58,3 +88,4 @@ void testSourceFreeKey()
 	const auto built = SourceFreeTranslationKeys::MakeKey(key);
 	FallHookTestSupport::require(built == "p=example.esp|f=01001234|e=questobjective|t=7|i=2|sid=2748", "source-free key mismatch");
 }
+

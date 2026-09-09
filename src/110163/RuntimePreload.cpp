@@ -6,6 +6,7 @@
 #include "PCH.h"
 
 #include "RuntimeLoadWatchdog.h"
+#include "RuntimeXmlSettings.h"
 #include "110163/RuntimePreload.h"
 
 #include <Windows.h>
@@ -122,7 +123,7 @@ namespace RuntimePreload
 			options.overlayDirectory = xmlDirectory / "Overlay";
 			options.dataDirectory = dataDirectory;
 			options.progress = pipelineProgress;
-			options.loadOrderMode = XmlLoadOrder::Mode::kPlugin;
+			options.loadOrderMode = RuntimeXmlSettings::Load().loadOrderMode;
 			options.runtimePreparedOnly = true;
 			{
 				RuntimeLoadWatchdog::ScopedPhase phase{ "RuntimePreload enumerate active plugins", 0.0 };

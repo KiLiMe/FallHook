@@ -30,4 +30,8 @@ namespace XmlLoadOrder
 	};
 
 	std::vector<std::size_t> SortIndices(std::span<const SortEntry> entries, Mode mode);
+
+	// Numeric filename prefix used by Mode::kLayer, e.g. "010_Fallout4.xml" -> 10.
+	// Files without a numeric prefix get the default priority so they stay in the middle.
+	[[nodiscard]] std::uint32_t LayerPriority(std::string_view filename);
 }

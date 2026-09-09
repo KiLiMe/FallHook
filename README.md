@@ -47,7 +47,7 @@ Data/F4SE/Plugins/FallHook.dll
 
 | 小节 | 键 | 默认值 | 用途 |
 | --- | --- | --- | --- |
-| `[XML]` | `LoadOrderMode` | `plugin` | `plugin` 按激活插件顺序；`filename` 按全局文件名升序 |
+| `[XML]` | `LoadOrderMode` | `plugin` | `plugin` 按激活插件顺序；`filename` 按全局文件名升序；`layer` 按文件名数字前缀分层（如 `010_` < `050_` < `999_`，无前缀为 `50`），后者覆盖前者 |
 | `[InGameTextHook]` | `Enable` | `false` | 游戏内文本 hook |
 | `[Watchdog]` | `Enable` | `false` | 加载/hook 缓慢或卡死告警 |
 | `[ActivityWatchdog]` | `Enable` | `false` | 逐 hook 详细活动日志，用于卡顿归因 |

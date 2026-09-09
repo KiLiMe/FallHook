@@ -6,6 +6,8 @@
 void testMapping();
 void testRuntimeResolution();
 void testLoadOrder();
+void testLayerPriority();
+void testLayerOrder();
 void testXmlParser();
 void testTxtParser();
 void testTextHelpers();
@@ -20,6 +22,8 @@ int main()
 	testMapping();
 	testRuntimeResolution();
 	testLoadOrder();
+	testLayerPriority();
+	testLayerOrder();
 	testXmlParser();
 	testTxtParser();
 	testTextHelpers();

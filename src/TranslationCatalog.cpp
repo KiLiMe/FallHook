@@ -232,7 +232,8 @@ namespace TranslationCatalog
 				.index = i,
 				.file = fileSortName(files[i].file),
 				.addon = files[i].file.addon,
-				.pluginPriority = files[i].pluginPriority
+				.pluginPriority = files[i].pluginPriority,
+				.layerPriority = XmlLoadOrder::LayerPriority(fileSortName(files[i].file))
 			});
 		}
 
@@ -275,8 +276,9 @@ namespace TranslationCatalog
 					result.records.push_back(std::move(record));
 					++result.acceptedEntries;
 				}
-				else if (mode == XmlLoadOrder::Mode::kFilename)
+				else if (mode == XmlLoadOrder::Mode::kFilename || mode == XmlLoadOrder::Mode::kLayer)
 				{
+					// Later files overwrite earlier ones in these modes.
 					result.records[it->second] = std::move(record);
 					++result.overwrittenEntries;
 				}

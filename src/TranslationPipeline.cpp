@@ -8,6 +8,7 @@
 #include "RuntimeStringOverlay.h"
 #include "TranslationPipelineCache.h"
 #include "TranslationPreparedData.h"
+#include "XmlLoadOrder.h"
 #include "XmlTranslationMapping.h"
 #include "XmlTranslationParser.h"
 
@@ -219,9 +220,24 @@ namespace TranslationPipeline
 
 	// Overlay XML files are stored in a separate directory and use only sID-based identity.
 	// They are not bound to any ESP plugin; the <Addon> field is ignored.
+	//
+	// Overlay files are ordered by an explicit layer priority (numeric filename
+	// prefix, see XmlLoadOrder::LayerPriority) so that later files overwrite
+	// earlier ones deterministically, instead of depending on the order the
+	// directory iterator happens to yield.
 	std::vector<std::filesystem::path> DiscoverOverlayXmlFiles(const std::filesystem::path& directory)
 	{
-		return DiscoverXmlFiles(directory);
+		auto files = DiscoverXmlFiles(directory);
+		std::ranges::stable_sort(files, [](const auto& left, const auto& right) {
+			const auto leftPriority = XmlLoadOrder::LayerPriority(left.filename().string());
+			const auto rightPriority = XmlLoadOrder::LayerPriority(right.filename().string());
+			if (leftPriority != rightPriority)
+			{
+				return leftPriority < rightPriority;
+			}
+			return left.filename().string() < right.filename().string();
+		});
+		return files;
 	}
 
 	TranslationPipelineResult Build(const TranslationPipelineOptions& options)
