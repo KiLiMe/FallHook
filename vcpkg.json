@@ -1,7 +1,7 @@
 {
   "name": "fallhook",
   "version-string": "0.1.0",
-  "description": "A source-free F4SE/CommonLibF4 translation runtime for Fallout 4 1.10.163.",
+  "description": "A source-free F4SE/CommonLibF4 translation runtime for Fallout 4 1.10.163, 1.11.191 and 1.11.240.",
   "license": "GPL-3.0",
   "dependencies": [
     {
