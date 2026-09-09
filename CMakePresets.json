@@ -19,8 +19,7 @@
           "type": "STRING",
           "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
         },
-        "VCPKG_TARGET_TRIPLET": "x64-windows-static-md",
-        "VCPKG_FEATURE_FLAGS": "-binarycaching"
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static-md"
       }
     },
     {
