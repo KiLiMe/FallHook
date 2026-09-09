@@ -31,13 +31,13 @@ jobs:
 
     steps:
       - name: Checkout FallHook
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up MSBuild (Visual Studio 2022)
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Cache CommonLibF4
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.COMMONLIBF4_DIR }}
           # 同一 ref 命中，跨 ref 用 restore-keys 复用后由下方脚本增量刷新
@@ -46,7 +46,7 @@ jobs:
             commonlibf4-${{ runner.os }}-
 
       - name: Cache vcpkg deps (binary cache)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ runner.temp }}/vcpkg_cache
           # vcpkg.json 含 builtin-baseline + spdlog/zlib 定义, hashFiles 保证依赖变更时失效
@@ -132,7 +132,7 @@ jobs:
           Get-ChildItem $plugins | Select-Object Name, Length
 
       - name: Upload FallHook artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: FallHook
           path: |
