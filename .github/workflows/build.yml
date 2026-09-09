@@ -16,15 +16,19 @@ on:
         default: 'main'
         type: string
 
+env:
+  # FallHook 需要 CommonLibF4 在同级目录 (默认 ../CommonLibF4)
+  COMMONLIBF4_REF: ${{ github.event.inputs.commonlibf4_ref || 'main' }}
+
 jobs:
   build:
     runs-on: windows-2022
     env:
-      # FallHook 需要 CommonLibF4 在同级目录 (默认 ../CommonLibF4)
-      # 注意: runner 机器变量 VCPKG_INSTALLATION_ROOT 不能在 job 级 env 用 ${{ env.* }} 引用，
+      # 说明: runner 机器变量 VCPKG_INSTALLATION_ROOT 不能在 job 级 env 用 ${{ env.* }} 引用，
       # 因此在下方 "Locate vcpkg" 步骤中把 VCPKG_ROOT 写入 $GITHUB_ENV。
-      COMMONLIBF4_REF: ${{ github.event.inputs.commonlibf4_ref || 'main' }}
       COMMONLIBF4_DIR: ${{ github.workspace }}/../CommonLibF4
+      # vcpkg 二进制缓存目录（由 actions/cache 持久化；CMakePresets 已移除 -binarycaching）
+      VCPKG_BINARY_SOURCES: clear;files,${{ runner.temp }}/vcpkg_cache,readwrite
 
     steps:
       - name: Checkout FallHook
@@ -32,6 +36,23 @@ jobs:
 
       - name: Set up MSBuild (Visual Studio 2022)
         uses: microsoft/setup-msbuild@v2
+
+      - name: Cache CommonLibF4
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.COMMONLIBF4_DIR }}
+          # 同一 ref 命中，跨 ref 用 restore-keys 复用后由下方脚本增量刷新
+          key: commonlibf4-${{ runner.os }}-${{ env.COMMONLIBF4_REF }}
+          restore-keys: |
+            commonlibf4-${{ runner.os }}-
+
+      - name: Cache vcpkg deps (binary cache)
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/vcpkg_cache
+          # vcpkg.json 含 builtin-baseline + spdlog/zlib 定义, hashFiles 保证依赖变更时失效
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-${{ runner.os }}-
 
       - name: Locate vcpkg and export VCPKG_ROOT
         shell: pwsh
@@ -44,25 +65,48 @@ jobs:
           "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
           Write-Host "VCPKG_ROOT exported -> $env:VCPKG_INSTALLATION_ROOT"
 
-      - name: Clone CommonLibF4 (recursive)
+      - name: Sync CommonLibF4 (incremental clone/refresh)
         shell: pwsh
         run: |
           $dir = "$env:COMMONLIBF4_DIR"
-          if (-not (Test-Path "$dir/include/F4SE/F4SE.h")) {
-            git clone --depth 1 --recursive --branch "$env:COMMONLIBF4_REF" `
-              https://github.com/libxse/commonlibf4.git "$dir"
-          }
-          Write-Host "CommonLibF4 ref: $env:COMMONLIBF4_REF"
+          $ref = "$env:COMMONLIBF4_REF"
+          Write-Host "CommonLibF4 ref: $ref"
           Write-Host "CommonLibF4 dir: $dir"
-          Test-Path "$dir/include/F4SE/F4SE.h"
-          Test-Path "$dir/lib/commonlib-shared/include/REX/REX.h"
+
+          function Test-CLReady {
+            (Test-Path "$dir/include/F4SE/F4SE.h") -and
+            (Test-Path "$dir/lib/commonlib-shared/include/REX/REX.h")
+          }
+
+          if (Test-CLReady) {
+            Write-Host "Cache hit -> refreshing existing checkout at $ref"
+            git -C $dir fetch --depth 1 origin $ref --tags --force 2>&1 | ForEach-Object { Write-Host $_ }
+            if ($LASTEXITCODE -eq 0) {
+              git -C $dir checkout --detach --force FETCH_HEAD 2>&1 | ForEach-Object { Write-Host $_ }
+              git -C $dir submodule update --init --recursive --depth 1 2>&1 | ForEach-Object { Write-Host $_ }
+            }
+            if ($LASTEXITCODE -ne 0 -or -not (Test-CLReady)) {
+              Write-Host "Refresh failed or incomplete -> full reclone"
+              Remove-Item -Recurse -Force $dir
+              git clone --depth 1 --recursive --branch $ref https://github.com/libxse/commonlibf4.git $dir
+            }
+          } else {
+            Write-Host "No cache -> full clone"
+            git clone --depth 1 --recursive --branch $ref https://github.com/libxse/commonlibf4.git $dir
+          }
+
+          Write-Host "Verifying CommonLibF4 layout:"
+          Write-Host "  F4SE.h        = $(Test-Path "$dir/include/F4SE/F4SE.h")"
+          Write-Host "  REX.h         = $(Test-Path "$dir/lib/commonlib-shared/include/REX/REX.h")"
+          if (-not (Test-CLReady)) { throw "CommonLibF4 layout incomplete after sync" }
 
       - name: Configure (cmake --preset fo4)
         shell: pwsh
         run: |
           Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
+          Write-Host "VCPKG_BINARY_SOURCES=$env:VCPKG_BINARY_SOURCES"
           cmake --preset fo4
-          # 首次配置会通过 vcpkg manifest 自动安装 spdlog / zlib，耗时较长
+          # 依赖通过 vcpkg 二进制缓存命中（缓存未命中时才编译 spdlog / zlib）
 
       - name: Build FallHook.dll (Release)
         shell: pwsh
