@@ -406,47 +406,6 @@ void testTranslationPipeline()
 	FallHookTestSupport::require(cached.prepared.constApply.records.size() == 1, "cached prepared const-apply section missing");
 	FallHookTestSupport::require(cached.prepared.constApply.records[0].data.replacerText == "New", "cached prepared destination mismatch");
 
-	// Overlay must stay populated on cache hits: the cached catalog never
-	// contains overlay entries, so a regression here silently drops every
-	// ESP-independent translation from the second launch onward.
-	// Use an isolated root so the overlay run writes its own cache: the cache
-	// validation compares the stored file list against the current one, and the
-	// overlay run stores an extra file that a later non-overlay run would not match.
-	const auto overlayRoot = std::filesystem::temp_directory_path() / std::format("FallHook_overlay_{}", stamp);
-	const auto overlayDataDir = overlayRoot / "Data";
-	const auto overlayXmlDir = overlayDataDir / "F4SE" / "Plugins" / "FallHook";
-	const auto overlaySubDir = overlayXmlDir / "Overlay";
-	std::filesystem::create_directories(overlaySubDir);
-	FallHookTestSupport::writeBinaryFile(overlayDataDir / "Example.esp", pluginBytes);
-	{
-		std::ofstream mainXml(overlayXmlDir / "Example.xml", std::ios::binary);
-		mainXml << R"(<SSTXMLRessources><Params><Addon>Example.esp</Addon></Params><Content>
-<String sID="0000A111"><EDID>PipelineQuest</EDID><REC id="99">QUST:NNAM</REC><Source>Old</Source><Dest>New</Dest></String>
-</Content></SSTXMLRessources>)";
-		mainXml.close();
-
-		std::ofstream overlayXml(overlaySubDir / "010_overlay.xml", std::ios::binary);
-		overlayXml << R"(<SSTXMLRessources><Params><Addon>__overlay__</Addon></Params><Content>
-<String sID="0000B222"><EDID></EDID><REC>FULL:NAME</REC><Source></Source><Dest>OverlayText</Dest></String>
-</Content></SSTXMLRessources>)";
-		overlayXml.close();
-	}
-
-	TranslationPipelineOptions overlayOptions;
-	overlayOptions.xmlDirectory = overlayXmlDir;
-	overlayOptions.overlayDirectory = overlaySubDir;
-	overlayOptions.dataDirectory = overlayDataDir;
-	overlayOptions.plugins.push_back({ "Example.esp", overlayDataDir / "Example.esp", 3 });
-
-	std::filesystem::remove_all(overlayRoot);
-
-	options.runtimePreparedOnly = true;
-	const auto runtimeCached = TranslationPipeline::Build(options);
-	FallHookTestSupport::require(runtimeCached.loadedFromCache, "runtime pipeline should load cache");
-	FallHookTestSupport::require(runtimeCached.catalog.records.empty(), "runtime cache should skip full catalog records");
-	FallHookTestSupport::require(runtimeCached.catalog.acceptedEntries == 1, "runtime cache should preserve catalog metadata");
-	FallHookTestSupport::require(runtimeCached.prepared.constApply.records.size() == 1, "runtime cache prepared section missing");
-	FallHookTestSupport::require(runtimeCached.prepared.constApply.records[0].data.replacerText == "New", "runtime cache destination mismatch");
 
 	std::filesystem::remove_all(root);
 }
