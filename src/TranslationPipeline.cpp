@@ -256,18 +256,39 @@ namespace TranslationPipeline
 				continue;
 			}
 
-			auto plugin = resolvePlugin(parsed.file.addon, options);
-			if (!plugin)
+				// Wildcard Addon "*" applies entries to every active plugin.
+			if (trim(parsed.file.addon) == "*")
 			{
-				++result.skippedMissingPlugin;
-				result.errors.push_back({ xmlPath, "XML Addon is not an active or discoverable plugin" });
-				continue;
-			}
+				if (options.plugins.empty())
+				{
+					++result.skippedMissingPlugin;
+					result.errors.push_back({ xmlPath, "wildcard Addon '*' but no active plugins" });
+					continue;
+				}
 
-			parsed.file.addon = plugin->name;
-			collectWantedSignatures(parsed.file, wantedByPlugin);
-			parsedFiles.push_back({ std::move(parsed.file), std::move(*plugin) });
-			++result.parsedXmlFiles;
+				for (const auto& plugin : options.plugins)
+				{
+					parsed.file.addon = plugin.name;
+					collectWantedSignatures(parsed.file, wantedByPlugin);
+					parsedFiles.push_back({ parsed.file, plugin });
+					++result.parsedXmlFiles;
+				}
+			}
+			else
+			{
+				auto plugin = resolvePlugin(parsed.file.addon, options);
+				if (!plugin)
+				{
+					++result.skippedMissingPlugin;
+					result.errors.push_back({ xmlPath, "XML Addon is not an active or discoverable plugin" });
+					continue;
+				}
+
+				parsed.file.addon = plugin->name;
+				collectWantedSignatures(parsed.file, wantedByPlugin);
+				parsedFiles.push_back({ std::move(parsed.file), std::move(*plugin) });
+				++result.parsedXmlFiles;
+			}
 		}
 
 		std::unordered_map<std::string, PluginEdidIndex> pluginIndexes;
