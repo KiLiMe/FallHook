@@ -354,7 +354,8 @@ namespace TranslationPipelineCache
 			!readPod(input, result.parsedXmlFiles) ||
 			!readPod(input, result.skippedMissingPlugin) ||
 			!readPod(input, result.loadedPluginIndexes) ||
-			!readPod(input, result.failedPluginIndexes))
+			!readPod(input, result.failedPluginIndexes) ||
+			false) // overlayEntries removed
 		{
 			return std::nullopt;
 		}

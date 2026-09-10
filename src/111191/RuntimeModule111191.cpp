@@ -23,6 +23,7 @@
 #include "111191/RuntimeQuestJournalTextHook.h"
 #include "111191/RuntimeTextManager.h"
 #include "111191/RuntimeXdiDialogueMenuHook.h"
+#include "RuntimePrologueHook.h"
 
 namespace Runtime111191
 {
@@ -45,6 +46,8 @@ namespace
 			RuntimeTextManager::RefreshAfterSaveLoad();
 		}
 	}
+
+
 
 	bool Load(const F4SE::LoadInterface*)
 	{
@@ -99,6 +102,9 @@ namespace
 			RuntimeLoadWatchdog::ScopedPhase phase{ "F4SEPluginLoad RuntimeHudRolloverHook::Install", 0.0 };
 			RuntimeHudRolloverHook::Install();
 		}
+
+
+
 		REX::INFO("{} item-name runtime uses FULL load hook, direct FULL mutation, global template mutation, and INNR data mutation.", Plugin::NAME);
 		REX::INFO(
 			"{} InGameText TXT source-key exception is enabled={} logRaw={}.",

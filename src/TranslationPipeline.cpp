@@ -216,6 +216,8 @@ namespace TranslationPipeline
 		return files;
 	}
 
+
+
 	TranslationPipelineResult Build(const TranslationPipelineOptions& options)
 	{
 		const PipelinePhase totalPhase{ options, "build total" };
@@ -225,6 +227,7 @@ namespace TranslationPipeline
 			const PipelinePhase phase{ options, "discover XML files" };
 			xmlFiles = DiscoverXmlFiles(options.xmlDirectory);
 		}
+
 		result.discoveredXmlFiles = xmlFiles.size();
 		result.cachePath = TranslationPipelineCache::CachePath(options);
 
@@ -232,6 +235,11 @@ namespace TranslationPipeline
 			const PipelinePhase phase{ options, "load runtime cache" };
 			if (auto cached = TranslationPipelineCache::Load(options, xmlFiles))
 			{
+				cached->parsedXmlFiles += result.parsedXmlFiles;
+				for (const auto& error : result.errors)
+				{
+					cached->errors.push_back(error);
+				}
 				return std::move(*cached);
 			}
 		}

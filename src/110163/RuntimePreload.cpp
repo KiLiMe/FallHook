@@ -119,6 +119,7 @@ namespace RuntimePreload
 
 			TranslationPipelineOptions options;
 			options.xmlDirectory = xmlDirectory;
+
 			options.dataDirectory = dataDirectory;
 			options.progress = pipelineProgress;
 			options.loadOrderMode = XmlLoadOrder::Mode::kPlugin;
