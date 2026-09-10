@@ -23,6 +23,12 @@
 #include "111191/RuntimeQuestJournalTextHook.h"
 #include "111191/RuntimeTextManager.h"
 #include "111191/RuntimeXdiDialogueMenuHook.h"
+#include "RuntimeStringOverlay.h"
+#include "111191/RuntimeTextStringAssign.h"
+#include "111191/RuntimeLocalizedStringID.h"
+#include "RE/T/TESDataHandler.h"
+#include "RE/T/TESFullName.h"
+#include "RE/T/TESForm.h"
 
 namespace Runtime111191
 {
@@ -38,6 +44,66 @@ namespace
 		if (message->type == F4SE::MessagingInterface::kGameDataReady)
 		{
 			RuntimeTextManager::ApplyBootCatalogOnce();
+
+			// Apply overlay translations to all loaded TESFullName forms.
+			// At boot time the localized strings were raw binary (no <ID=...>),
+			// so the FullName load hook could not match sIDs against overlay.
+			// By kGameDataReady the strings are resolved; iterate all target
+			// form types and apply any overlay match.
+			{
+				auto* handler = RE::TESDataHandler::GetSingleton();
+				if (handler && RuntimeStringOverlay::Count() > 0)
+				{
+					std::size_t applied = 0;
+					const auto applyOverlay = [&](auto* form) {
+						if (!form)
+							return;
+						auto* fullName = form->As<RE::TESFullName>();
+						if (!fullName)
+							return;
+						const auto stringID = Runtime111191::RuntimeLocalizedStringID::Read(fullName->fullName);
+						if (!stringID)
+							return;
+						const auto* overlayText = RuntimeStringOverlay::Lookup(*stringID);
+						if (!overlayText || overlayText->empty())
+							return;
+						RuntimeTextStringAssign::AssignPlainLocalized(fullName->fullName, *overlayText);
+						++applied;
+					};
+
+					for (auto* weap : handler->GetFormArray<RE::TESObjectWEAP>())
+						applyOverlay(weap);
+					for (auto* armo : handler->GetFormArray<RE::TESObjectARMO>())
+						applyOverlay(armo);
+					for (auto* misc : handler->GetFormArray<RE::TESObjectMISC>())
+						applyOverlay(misc);
+					for (auto* npc : handler->GetFormArray<RE::TESNPC>())
+						applyOverlay(npc);
+					for (auto* book : handler->GetFormArray<RE::TESObjectBOOK>())
+						applyOverlay(book);
+					for (auto* ammo : handler->GetFormArray<RE::TESAmmo>())
+						applyOverlay(ammo);
+					for (auto* keym : handler->GetFormArray<RE::TESKey>())
+						applyOverlay(keym);
+					for (auto* slgm : handler->GetFormArray<RE::TESSoulGem>())
+						applyOverlay(slgm);
+					for (auto* spel : handler->GetFormArray<RE::SpellItem>())
+						applyOverlay(spel);
+					for (auto* ench : handler->GetFormArray<RE::EnchantmentItem>())
+						applyOverlay(ench);
+					for (auto* furn : handler->GetFormArray<RE::TESFurniture>())
+						applyOverlay(furn);
+					for (auto* cont : handler->GetFormArray<RE::TESObjectCONT>())
+						applyOverlay(cont);
+					for (auto* door : handler->GetFormArray<RE::TESObjectDOOR>())
+						applyOverlay(door);
+					for (auto* ligh : handler->GetFormArray<RE::TESObjectLIGH>())
+						applyOverlay(ligh);
+
+					REX::INFO("{} applied {} overlay translation(s) to FullName forms at GameDataReady.",
+						Plugin::NAME, applied);
+				}
+			}
 		}
 		else if (message->type == F4SE::MessagingInterface::kNewGame ||
 				 message->type == F4SE::MessagingInterface::kPostLoadGame)
