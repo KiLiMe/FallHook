@@ -193,7 +193,8 @@ namespace RuntimeFullNameLoadTranslations
 		g_hasOwnerFallbackLookup = g_needsOwnerWithoutStringID ||
 			!g_byFormID.empty() ||
 			!g_byEditorID.empty() ||
-			!g_byNpcIndexedFallback.empty();
+			!g_byNpcIndexedFallback.empty() ||
+			RuntimeStringOverlay::Count() != 0;
 		g_rebuiltCatalog = std::addressof(catalog);
 		g_lastStats = stats;
 		if (RuntimeApplySettings::Load().TraceEnabled())
@@ -222,12 +223,10 @@ namespace RuntimeFullNameLoadTranslations
 			{
 				return true;
 			}
-			// Overlay entries are not tracked in g_stringIDs, so check them here.
-			if (RuntimeStringOverlay::Lookup(*stringID))
-			{
-				return true;
-			}
 		}
+		// Overlay entries match by stringID at run time. During boot the stringID
+		// is often nullopt (plain text, no <ID=...> prefix), so the check above
+		// isn't enough — we must also look at g_hasOwnerFallbackLookup.
 		return g_hasOwnerFallbackLookup;
 	}
 
