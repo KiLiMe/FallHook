@@ -41,7 +41,48 @@ Data/F4SE/Plugins/FallHook.dll
    <Fallout 4>/Data/F4SE/Plugins/FallHook/
    ```
 
-## 配置
+## XML 格式
+
+FallHook 使用标准的 xTranslator XML 格式。每个 XML 文件包含一个 `<Addon>` 字段，指定该翻译属于哪个插件：
+
+```xml
+<SSTXMLRessources>
+  <Params><Addon>SomeMod.esp</Addon></Params>
+  <Content>
+    <String>
+      <FormID>0x00123456</FormID>
+      <REC>WEAP:FULL</REC>
+      <Dest>中文武器名</Dest>
+    </String>
+  </Content>
+</SSTXMLRessources>
+```
+
+### 通配符 Addon
+
+`<Addon>` 支持通配符 `*`，将该 XML 文件中的翻译条目应用到**所有已加载的插件**。
+适合放置通用的跨插件翻译（如汉化 FULL 名称），避免为每个插件准备一份相同的 XML：
+
+```xml
+<SSTXMLRessources>
+  <Params><Addon>*</Addon></Params>
+  <Content>
+    <String>
+      <FormID>0x00123456</FormID>
+      <REC>WEAP:FULL</REC>
+      <Dest>中文武器名</Dest>
+    </String>
+  </Content>
+</SSTXMLRessources>
+```
+
+#### 冲突优先级
+
+默认模式（`LoadOrderMode=plugin`）下，**先加载的条目优先**，相同 key 的后续条目被忽略。
+排序规则：插件优先级高的在前，同一优先级内按文件名倒序。
+
+因此通用的 `*` 翻译作为基础填充，特定插件的专用 XML 如果有更高优先级或者按文件名排序更靠后，
+其条目会优先于 `*` 中的同名条目（先插入先生效）。
 
 配置文件位于 `Data/F4SE/Plugins/FallHook.ini`(仓库内为 `config/FallHook.ini`)。常用项：
 
