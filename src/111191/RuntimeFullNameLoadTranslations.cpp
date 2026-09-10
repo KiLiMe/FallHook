@@ -193,8 +193,7 @@ namespace RuntimeFullNameLoadTranslations
 		g_hasOwnerFallbackLookup = g_needsOwnerWithoutStringID ||
 			!g_byFormID.empty() ||
 			!g_byEditorID.empty() ||
-			!g_byNpcIndexedFallback.empty() ||
-			RuntimeStringOverlay::Count() != 0;
+			!g_byNpcIndexedFallback.empty();
 		g_rebuiltCatalog = std::addressof(catalog);
 		g_lastStats = stats;
 		if (RuntimeApplySettings::Load().TraceEnabled())
@@ -235,18 +234,6 @@ namespace RuntimeFullNameLoadTranslations
 		if (!form)
 		{
 			return {};
-		}
-
-		// Overlay sID lookup: ESP-independent override, highest priority
-		if (stringID)
-		{
-			if (const auto* overlayText = RuntimeStringOverlay::Lookup(*stringID))
-			{
-				return LookupResult{
-					.text = overlayText,
-					.source = LookupSource::kStringID
-				};
-			}
 		}
 
 		if (stringID)
@@ -300,3 +287,4 @@ namespace RuntimeFullNameLoadTranslations
 }
 
 } // namespace Runtime111191
+ 

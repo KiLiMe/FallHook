@@ -218,60 +218,7 @@ namespace TranslationPipeline
 		return files;
 	}
 
-	// Overlay XML files are stored in a separate directory and use only sID-based identity.
-	// They are not bound to any ESP plugin; the <Addon> field is ignored.
-	//
-	// Overlay files are ordered by an explicit layer priority (numeric filename
-	// prefix, see XmlLoadOrder::LayerPriority) so that later files overwrite
-	// earlier ones deterministically, instead of depending on the order the
-	// directory iterator happens to yield.
-	std::vector<std::filesystem::path> DiscoverOverlayXmlFiles(const std::filesystem::path& directory)
-	{
-		auto files = DiscoverXmlFiles(directory);
-		std::ranges::stable_sort(files, [](const auto& left, const auto& right) {
-			const auto leftPriority = XmlLoadOrder::LayerPriority(left.filename().string());
-			const auto rightPriority = XmlLoadOrder::LayerPriority(right.filename().string());
-			if (leftPriority != rightPriority)
-			{
-				return leftPriority < rightPriority;
-			}
-			return left.filename().string() < right.filename().string();
-		});
-		return files;
-	}
 
-	// Overlay XMLs are sID-only and are never part of the cached catalog, so they
-	// are parsed on every build: on a cache hit the catalog is reused but the
-	// overlay map would otherwise stay empty (SetMap() is only called here).
-	void buildOverlay(
-		const TranslationPipelineOptions& options,
-		std::span<const std::filesystem::path> overlayXmlFiles,
-		TranslationPipelineResult& result)
-	{
-		RuntimeStringOverlay::OverlayMap overlayMap;
-		for (const auto& xmlPath : overlayXmlFiles)
-		{
-			const PipelinePhase phase{ options, std::string{ "parse overlay XML " } + xmlPath.filename().string() };
-			auto parsed = XmlTranslationParser::ParseFile(xmlPath);
-			if (!parsed.success)
-			{
-				result.errors.push_back({ xmlPath, parsed.error });
-				continue;
-			}
-
-			for (const auto& entry : parsed.file.entries)
-			{
-				if (!entry.stringID || entry.dest.empty())
-				{
-					continue;
-				}
-				overlayMap[*entry.stringID] = entry.dest;
-			}
-			++result.parsedXmlFiles;
-		}
-		RuntimeStringOverlay::SetMap(std::move(overlayMap));
-		result.overlayEntries = RuntimeStringOverlay::Count();
-	}
 
 	TranslationPipelineResult Build(const TranslationPipelineOptions& options)
 	{
@@ -283,27 +230,13 @@ namespace TranslationPipeline
 			xmlFiles = DiscoverXmlFiles(options.xmlDirectory);
 		}
 
-		// Also discover overlay XML files from the overlay directory
-		std::vector<std::filesystem::path> overlayXmlFiles;
-		{
-			const PipelinePhase phase{ options, "discover overlay XML files" };
-			overlayXmlFiles = DiscoverOverlayXmlFiles(options.overlayDirectory);
-		}
-		result.discoveredXmlFiles = xmlFiles.size() + overlayXmlFiles.size();
+		result.discoveredXmlFiles = xmlFiles.size();
 		result.cachePath = TranslationPipelineCache::CachePath(options);
-
-		// Overlay is parsed before the cache lookup so it is populated on cache
-		// hits too; the cached catalog never contains overlay entries.
-		buildOverlay(options, overlayXmlFiles, result);
 
 		{
 			const PipelinePhase phase{ options, "load runtime cache" };
-			std::vector<std::filesystem::path> allXmlFiles = xmlFiles;
-			allXmlFiles.insert(allXmlFiles.end(), overlayXmlFiles.begin(), overlayXmlFiles.end());
-			if (auto cached = TranslationPipelineCache::Load(options, allXmlFiles))
+			if (auto cached = TranslationPipelineCache::Load(options, xmlFiles))
 			{
-				cached->overlayEntries = result.overlayEntries;
-				cached->discoveredXmlFiles = result.discoveredXmlFiles;
 				cached->parsedXmlFiles += result.parsedXmlFiles;
 				for (const auto& error : result.errors)
 				{
@@ -384,9 +317,7 @@ namespace TranslationPipeline
 		}
 		{
 			const PipelinePhase phase{ options, "save runtime cache" };
-			std::vector<std::filesystem::path> allXmlFiles = xmlFiles;
-			allXmlFiles.insert(allXmlFiles.end(), overlayXmlFiles.begin(), overlayXmlFiles.end());
-			result.savedCache = TranslationPipelineCache::Save(options, allXmlFiles, result);
+			result.savedCache = TranslationPipelineCache::Save(options, xmlFiles, result);
 		}
 		return result;
 	}

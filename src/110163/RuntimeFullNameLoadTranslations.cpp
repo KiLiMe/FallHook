@@ -191,8 +191,7 @@ namespace RuntimeFullNameLoadTranslations
 		g_hasOwnerFallbackLookup = g_needsOwnerWithoutStringID ||
 			!g_byFormID.empty() ||
 			!g_byEditorID.empty() ||
-			!g_byNpcIndexedFallback.empty() ||
-			RuntimeStringOverlay::Count() != 0;
+			!g_byNpcIndexedFallback.empty();
 		g_rebuiltCatalog = std::addressof(catalog);
 		g_lastStats = stats;
 		if (RuntimeApplySettings::Load().TraceEnabled())
@@ -215,17 +214,9 @@ namespace RuntimeFullNameLoadTranslations
 
 	bool MayNeedOwnerLookup(std::optional<std::uint32_t> stringID) noexcept
 	{
-		if (stringID)
+		if (stringID && g_stringIDs.contains(*stringID))
 		{
-			if (g_stringIDs.contains(*stringID))
-			{
-				return true;
-			}
-			// Overlay entries are not tracked in g_stringIDs, so check them here.
-			if (RuntimeStringOverlay::Lookup(*stringID))
-			{
-				return true;
-			}
+			return true;
 		}
 		return g_hasOwnerFallbackLookup;
 	}
@@ -235,18 +226,6 @@ namespace RuntimeFullNameLoadTranslations
 		if (!form)
 		{
 			return {};
-		}
-
-		// Overlay sID lookup: ESP-independent override, highest priority
-		if (stringID)
-		{
-			if (const auto* overlayText = RuntimeStringOverlay::Lookup(*stringID))
-			{
-				return LookupResult{
-					.text = overlayText,
-					.source = LookupSource::kStringID
-				};
-			}
 		}
 
 		if (stringID)

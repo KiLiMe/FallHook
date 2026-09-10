@@ -355,7 +355,7 @@ namespace TranslationPipelineCache
 			!readPod(input, result.skippedMissingPlugin) ||
 			!readPod(input, result.loadedPluginIndexes) ||
 			!readPod(input, result.failedPluginIndexes) ||
-			!readPod(input, result.overlayEntries))
+			false) // overlayEntries removed
 		{
 			return std::nullopt;
 		}
@@ -423,7 +423,6 @@ namespace TranslationPipelineCache
 			!writePod(output, result.skippedMissingPlugin) ||
 			!writePod(output, result.loadedPluginIndexes) ||
 			!writePod(output, result.failedPluginIndexes) ||
-			!writePod(output, result.overlayEntries) ||
 			!writeCatalogMetadata(output, result.catalog) ||
 			!writePrepared(output, result.prepared) ||
 			!writeCatalogRecords(output, result.catalog.records))

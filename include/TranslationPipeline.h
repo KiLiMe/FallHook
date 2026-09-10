@@ -34,7 +34,7 @@ enum class TranslationPipelinePhaseEvent
 struct TranslationPipelineOptions
 {
 	std::filesystem::path xmlDirectory;
-	std::filesystem::path overlayDirectory;
+
 	std::filesystem::path dataDirectory;
 	std::vector<TranslationPipelinePlugin> plugins;
 	std::function<void(std::string_view, TranslationPipelinePhaseEvent)> progress;
@@ -60,7 +60,7 @@ struct TranslationPipelineResult
 	std::size_t loadedPluginIndexes{ 0 };
 	std::size_t failedPluginIndexes{ 0 };
 	// stringID-only overlay entries loaded from Overlay/ (ESP-independent).
-	std::size_t overlayEntries{ 0 };
+
 	bool loadedFromCache{ false };
 	bool savedCache{ false };
 };

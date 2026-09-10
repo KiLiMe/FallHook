@@ -23,10 +23,7 @@
 #include "111191/RuntimeQuestJournalTextHook.h"
 #include "111191/RuntimeTextManager.h"
 #include "111191/RuntimeXdiDialogueMenuHook.h"
-#include "RuntimeStringOverlay.h"
 #include "RuntimePrologueHook.h"
-#include "111191/RuntimeLocalizedStringID.h"
-#include "RE/B/BGSLocalizedString.h"
 
 namespace Runtime111191
 {
@@ -50,40 +47,7 @@ namespace
 		}
 	}
 
-	// ── BGSLocalizedStringDL::GetText hook ──
-	// Intercepts game's sID→text resolution to inject overlay translations.
-	using GetTextFunc = RE::BGSLocalizedStrings::ScrapStringBuffer(RE::BGSLocalizedStringDL*, RE::TESFile&);
-	GetTextFunc* g_getText{ nullptr };
 
-	RE::BGSLocalizedStrings::ScrapStringBuffer getTextThunk(RE::BGSLocalizedStringDL* self, RE::TESFile& file)
-	{
-		auto result = g_getText(self, file);
-		if (!self || self->id == 0 || RuntimeStringOverlay::Count() == 0)
-		{
-			return result;
-		}
-
-		const auto* overlayText = RuntimeStringOverlay::Lookup(self->id);
-		if (!overlayText || overlayText->empty())
-		{
-			return result;
-		}
-
-		// Replace the result with overlay text
-		const auto* originalStr = result.GetString();
-		if (originalStr && *originalStr != '\0')
-		{
-			REX::INFO("{} overlay GetText sID={:#08x} '{}' => '{}'",
-				Plugin::NAME, self->id, originalStr, *overlayText);
-		}
-
-		// We can't easily replace the result buffer, so we store it and use
-		// it in the via the overlay map at the lookup sites.
-		// Actually, BGSLocalizedString operator= preserves <ID=...> prefix
-		// and appends the resolved text. We need to hook the level where the
-		// resolved text is assigned back to BGSLocalizedString.
-		return result;
-	}
 
 	bool Load(const F4SE::LoadInterface*)
 	{
@@ -139,23 +103,7 @@ namespace
 			RuntimeHudRolloverHook::Install();
 		}
 
-		// Install BGSLocalizedStringDL::GetText hook
-		{
-			constexpr REL::ID kGetTextID{ 2194238 };
-			std::uintptr_t originalAddress = 0;
-			if (RuntimePrologueHook::InstallJump(
-					REL::Relocation<std::uintptr_t>{ kGetTextID }.address(),
-					reinterpret_cast<std::uintptr_t>(getTextThunk),
-					originalAddress).installed)
-			{
-				g_getText = reinterpret_cast<GetTextFunc*>(originalAddress);
-				REX::INFO("{} installed BGSLocalizedStringDL::GetText hook at ID 2194238.", Plugin::NAME);
-			}
-			else
-			{
-				REX::ERROR("{} skipped BGSLocalizedStringDL::GetText hook; unsupported prologue bytes.", Plugin::NAME);
-			}
-		}
+
 
 		REX::INFO("{} item-name runtime uses FULL load hook, direct FULL mutation, global template mutation, and INNR data mutation.", Plugin::NAME);
 		REX::INFO(

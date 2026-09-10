@@ -439,15 +439,6 @@ void testTranslationPipeline()
 	overlayOptions.dataDirectory = overlayDataDir;
 	overlayOptions.plugins.push_back({ "Example.esp", overlayDataDir / "Example.esp", 3 });
 
-	const auto overlayFirst = TranslationPipeline::Build(overlayOptions);
-	FallHookTestSupport::require(overlayFirst.overlayEntries == 1, "overlay entries were not loaded on first build");
-
-	const auto overlayCached = TranslationPipeline::Build(overlayOptions);
-	FallHookTestSupport::require(overlayCached.loadedFromCache, "overlay build should hit the cache on the second run");
-	FallHookTestSupport::require(overlayCached.overlayEntries == 1, "overlay entries were lost on cache hit");
-	FallHookTestSupport::require(
-		RuntimeStringOverlay::Lookup(0x0000B222) != nullptr && *RuntimeStringOverlay::Lookup(0x0000B222) == "OverlayText",
-		"overlay map was not populated on cache hit");
 	std::filesystem::remove_all(overlayRoot);
 
 	options.runtimePreparedOnly = true;
