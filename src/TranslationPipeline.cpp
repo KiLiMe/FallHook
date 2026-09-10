@@ -127,7 +127,7 @@ namespace
 		auto& wanted = wantedByPlugin[lower(file.addon)];
 		for (const auto& entry : file.entries)
 		{
-			if (entry.edid.empty() && !entry.stringID)
+			if (entry.edid.empty() && !entry.stringID && !entry.formID)
 			{
 				continue;
 			}
