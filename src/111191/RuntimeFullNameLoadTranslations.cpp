@@ -216,9 +216,17 @@ namespace RuntimeFullNameLoadTranslations
 
 	bool MayNeedOwnerLookup(std::optional<std::uint32_t> stringID) noexcept
 	{
-		if (stringID && g_stringIDs.contains(*stringID))
+		if (stringID)
 		{
-			return true;
+			if (g_stringIDs.contains(*stringID))
+			{
+				return true;
+			}
+			// Overlay entries are not tracked in g_stringIDs, so check them here.
+			if (RuntimeStringOverlay::Lookup(*stringID))
+			{
+				return true;
+			}
 		}
 		return g_hasOwnerFallbackLookup;
 	}
