@@ -256,7 +256,9 @@ namespace TranslationPipeline
 				continue;
 			}
 
-				// Wildcard Addon "*" applies entries to every active plugin.
+			// Wildcard Addon "*" applies entries to every active plugin without
+			// cloning duplicates. The same (formID, record) key is only inserted
+			// once; subsequent plugins get an empty filtered list.
 			if (trim(parsed.file.addon) == "*")
 			{
 				if (options.plugins.empty())
@@ -266,11 +268,32 @@ namespace TranslationPipeline
 					continue;
 				}
 
+				std::unordered_set<std::string> seenWildcardKeys;
 				for (const auto& plugin : options.plugins)
 				{
-					parsed.file.addon = plugin.name;
-					collectWantedSignatures(parsed.file, wantedByPlugin);
-					parsedFiles.push_back({ parsed.file, plugin });
+					auto wildcardFile = parsed.file;
+					wildcardFile.addon = plugin.name;
+
+					std::vector<XmlTranslationEntry> filtered;
+					filtered.reserve(wildcardFile.entries.size());
+					for (const auto& entry : wildcardFile.entries)
+					{
+						const auto entryKey = std::format("{:08X}:{}",
+							entry.formID.value_or(0), entry.record);
+						if (seenWildcardKeys.insert(entryKey).second)
+						{
+							filtered.push_back(entry);
+						}
+					}
+
+					if (filtered.empty())
+					{
+						continue;
+					}
+
+					wildcardFile.entries = std::move(filtered);
+					collectWantedSignatures(wildcardFile, wantedByPlugin);
+					parsedFiles.push_back({ std::move(wildcardFile), plugin });
 					++result.parsedXmlFiles;
 				}
 			}
