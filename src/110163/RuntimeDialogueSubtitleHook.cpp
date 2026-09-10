@@ -21,6 +21,10 @@
 #include <atomic>
 #include <Windows.h>
 
+#ifdef ERROR
+#	undef ERROR
+#endif
+
 namespace
 {
 	using ShowSubtitleFunc = void(RE::SubtitleManager*, RE::TESObjectREFR*, RE::BSFixedStringCS&, RE::TESTopicInfo*, bool);

@@ -21,6 +21,10 @@
 #include <atomic>
 #include <Windows.h>
 
+#ifdef ERROR
+#	undef ERROR
+#endif
+
 namespace Runtime111191
 {
 namespace
