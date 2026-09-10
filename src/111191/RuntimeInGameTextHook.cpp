@@ -57,9 +57,9 @@ namespace
 	using UIGetMenuOpenFunc = bool(RE::UI*, const RE::BSFixedString&);
 	constexpr REL::ID kAddTranslationsID{ 2295298 };
 	constexpr REL::ID kAddTranslationID{ 2299490 };
-	constexpr REL::Offset kSetResultOffset{ 0x01B35190 };
-	constexpr REL::Offset kUISingletonOffset{ 0x030DD830 };
-	constexpr REL::Offset kUIGetMenuOpenOffset{ 0x01A7FD40 };
+	constexpr REL::ID kSetResultID{ 2287951 };
+	constexpr REL::ID kUISingletonID{ 4796315 };
+	constexpr REL::ID kUIGetMenuOpenID{ 2284748 };
 	constexpr std::size_t kTranslateVtableSlot{ 2 };
 
 	std::atomic_bool g_active{ false };
@@ -218,8 +218,8 @@ namespace
 		}
 
 		nextPoll.store(now + 100, std::memory_order_release);
-		static REL::Relocation<RE::UI**> uiSingleton{ kUISingletonOffset };
-		static REL::Relocation<UIGetMenuOpenFunc*> getMenuOpen{ kUIGetMenuOpenOffset };
+		static REL::Relocation<RE::UI**> uiSingleton{ kUISingletonID };
+		static REL::Relocation<UIGetMenuOpenFunc*> getMenuOpen{ kUIGetMenuOpenID };
 		static RE::BSFixedString terminalMenuName{ "TerminalMenu" };
 		auto* ui = *uiSingleton;
 		const bool open = ui && getMenuOpen(ui, terminalMenuName);
@@ -405,7 +405,7 @@ namespace
 			return;
 		}
 
-		REL::Relocation<std::uintptr_t> target{ kSetResultOffset };
+		REL::Relocation<std::uintptr_t> target{ kSetResultID };
 		const auto prefix = RuntimeMemorySafety::ReadUnaligned<std::uint32_t>(reinterpret_cast<const void*>(target.address()), 0).value_or(0);
 		if (prefix != 0x74D28548)
 		{
@@ -413,7 +413,7 @@ namespace
 			return;
 		}
 		g_setResult = reinterpret_cast<SetResultFunc*>(target.address());
-		REX::INFO("{} resolved TranslateInfo::SetResult helper at {:X} using 111191 offset {:X}.", Plugin::NAME, target.address(), kSetResultOffset.offset());
+		REX::INFO("{} resolved TranslateInfo::SetResult helper at {:X} using Address Library ID {}.", Plugin::NAME, target.address(), kSetResultID.id());
 	}
 
 	void installTranslateHook()

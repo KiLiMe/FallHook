@@ -34,7 +34,7 @@ namespace
 		RE::TESResponse*,
 		RE::TESQuest*);
 
-	constexpr REL::Offset kDialogueResponseCtorOffset{ 0x00BAE830 };
+	constexpr REL::ID kDialogueResponseCtorID{ 2227132 };
 	constexpr std::size_t kMaxPatchBytes{ 16 };
 
 	DialogueResponseCtorFunc* g_dialogueResponseCtor{ nullptr };
@@ -76,9 +76,9 @@ namespace
 	}
 
 	template <class Func>
-	void installOffset(REL::Offset offset, Func* detour, Func*& original, std::string_view name)
+	void installID(REL::ID id, Func* detour, Func*& original, std::string_view name)
 	{
-		REL::Relocation<std::uintptr_t> target{ offset };
+		REL::Relocation<std::uintptr_t> target{ id };
 		const auto result = RuntimePrologueHook::InstallJump(
 			target.address(),
 			reinterpret_cast<std::uintptr_t>(detour),
@@ -94,7 +94,7 @@ namespace
 		}
 
 		original = reinterpret_cast<Func*>(result.original);
-		REX::INFO("{} installed {} hook at {:X} using offset {:X}.", Plugin::NAME, name, target.address(), offset.offset());
+		REX::INFO("{} installed {} hook at {:X} using Address Library ID {}.", Plugin::NAME, name, target.address(), id.id());
 	}
 }
 
@@ -108,8 +108,8 @@ namespace RuntimeDialogueResponseHook
 			return;
 		}
 
-		installOffset(
-			kDialogueResponseCtorOffset,
+		installID(
+			kDialogueResponseCtorID,
 			dialogueResponseCtorThunk,
 			g_dialogueResponseCtor,
 			"DialogueResponse::DialogueResponse");

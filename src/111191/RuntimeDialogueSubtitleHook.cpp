@@ -19,6 +19,7 @@
 #include "RE/T/TESTopicInfo.h"
 
 #include <atomic>
+#include <Windows.h>
 
 namespace Runtime111191
 {
@@ -75,6 +76,18 @@ namespace
 		{
 			REX::WARN("{} skipped SubtitleManager::ShowSubtitle hook; another plugin has already installed a hook at {:X}.",
 				Plugin::NAME, target.address());
+			return;
+		}
+
+		// po3_FloatingSubtitlesF4 copies 5-byte jmp to its own trampoline. If
+		// FallHook installs first, po3 copies FallHook's jmp and calls it from
+		// the trampoline with wrong relative offset -> crash. Detect po3 by DLL
+		// name so FallHook skips this hook and both stay stable. At Load() time
+		// all plugins are already LoadLibrary'd, so GetModuleHandle works.
+		if (::GetModuleHandleW(L"po3_FloatingSubtitlesF4.dll"))
+		{
+			REX::INFO("{} detected po3_FloatingSubtitlesF4.dll; skipping SubtitleManager::ShowSubtitle hook to avoid trampoline conflict.",
+				Plugin::NAME);
 			return;
 		}
 
