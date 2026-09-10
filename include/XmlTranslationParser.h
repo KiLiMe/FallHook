@@ -19,6 +19,7 @@ struct XmlTranslationEntry
 	std::optional<std::uint32_t> partial;
 	std::optional<std::uint32_t> index;
 	std::optional<std::uint32_t> indexMax;
+	std::optional<std::uint32_t> formID;
 	std::size_t ordinal{ 0 };
 	std::size_t recordOrdinal{ 0 };
 	std::string edid;

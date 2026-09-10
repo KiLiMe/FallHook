@@ -75,9 +75,18 @@ namespace
 			return std::nullopt;
 		}
 
+		// Handle 0x/0X prefix for hex parsing
+		auto start = value.data();
+		auto len = value.size();
+		if (base == 16 && len > 2 && start[0] == '0' && (start[1] == 'x' || start[1] == 'X'))
+		{
+			start += 2;
+			len -= 2;
+		}
+
 		std::uint32_t parsed = 0;
-		const auto* first = value.data();
-		const auto* last = value.data() + value.size();
+		const auto* first = start;
+		const auto* last = start + len;
 		const auto result = std::from_chars(first, last, parsed, base);
 		if (result.ec != std::errc{} || result.ptr != last)
 		{
@@ -191,6 +200,10 @@ namespace
 			{
 				entry.stringID = parseUInt(value, 16);
 			}
+			else if (name == "FormID")
+			{
+				entry.formID = parseUInt(value, 16);
+			}
 			else if (name == "Partial")
 			{
 				entry.partial = parseUInt(value, 10);
@@ -205,6 +218,10 @@ namespace
 		if (pathIs(path, { "SSTXMLRessources", "Params", "Addon" }))
 		{
 			file.addon.append(text);
+		}
+		else if (pathIs(path, { "SSTXMLRessources", "Content", "String", "FormID" }))
+		{
+			entry.formID = parseUInt(text, 16);
 		}
 		else if (pathIs(path, { "SSTXMLRessources", "Content", "String", "EDID" }))
 		{

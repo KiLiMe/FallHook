@@ -48,6 +48,11 @@ namespace
 
 	std::optional<std::uint32_t> resolveFormID(const TranslationCatalogFile& file, const XmlTranslationEntry& entry, std::string_view recordSignature)
 	{
+		if (entry.formID)
+		{
+			return entry.formID;
+		}
+
 		if (auto bracketFormID = XmlTranslationMapping::ParseBracketFormID(entry.edid))
 		{
 			return bracketFormID;

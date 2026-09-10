@@ -150,11 +150,11 @@ namespace
 		const auto lookup = RuntimeActivityWatch::RunWork(
 			"FullName lookup",
 			[&]() { return RuntimeFullNameLoadTranslations::Lookup(form, stringID); });
-		if (lookup.text)
+		// DEBUG: force all FullNames to 囖
 		{
 			RuntimeActivityWatch::RunWork(
 				"FullName assign",
-				[&]() { RuntimeTextStringAssign::AssignPlainLocalized(fullName->fullName, *lookup.text); });
+				[&]() { RuntimeTextStringAssign::AssignPlainLocalized(fullName->fullName, "囖"); });
 			if (isNpc)
 			{
 				form->AddChange(RE::CHANGE_TYPES::kActorBaseFullName);

@@ -24,11 +24,9 @@
 #include "111191/RuntimeTextManager.h"
 #include "111191/RuntimeXdiDialogueMenuHook.h"
 #include "RuntimeStringOverlay.h"
-#include "111191/RuntimeTextStringAssign.h"
+#include "RuntimePrologueHook.h"
 #include "111191/RuntimeLocalizedStringID.h"
-#include "RE/T/TESDataHandler.h"
-#include "RE/T/TESFullName.h"
-#include "RE/T/TESForm.h"
+#include "RE/B/BGSLocalizedString.h"
 
 namespace Runtime111191
 {
@@ -44,72 +42,47 @@ namespace
 		if (message->type == F4SE::MessagingInterface::kGameDataReady)
 		{
 			RuntimeTextManager::ApplyBootCatalogOnce();
-
-			// Apply overlay translations to all loaded TESFullName forms.
-			// At boot time the localized strings were raw binary (no <ID=...>),
-			// so the FullName load hook could not match sIDs against overlay.
-			// By kGameDataReady the strings are resolved; iterate all target
-			// form types and apply any overlay match.
-			{
-				auto* handler = RE::TESDataHandler::GetSingleton();
-				if (handler && RuntimeStringOverlay::Count() > 0)
-				{
-					std::size_t applied = 0;
-					const auto applyOverlay = [&](auto* form) {
-						if (!form)
-							return;
-						auto* fullName = form->As<RE::TESFullName>();
-						if (!fullName)
-							return;
-						const auto stringID = Runtime111191::RuntimeLocalizedStringID::Read(fullName->fullName);
-						if (!stringID)
-							return;
-						const auto* overlayText = RuntimeStringOverlay::Lookup(*stringID);
-						if (!overlayText || overlayText->empty())
-							return;
-						RuntimeTextStringAssign::AssignPlainLocalized(fullName->fullName, *overlayText);
-						++applied;
-					};
-
-					for (auto* weap : handler->GetFormArray<RE::TESObjectWEAP>())
-						applyOverlay(weap);
-					for (auto* armo : handler->GetFormArray<RE::TESObjectARMO>())
-						applyOverlay(armo);
-					for (auto* misc : handler->GetFormArray<RE::TESObjectMISC>())
-						applyOverlay(misc);
-					for (auto* npc : handler->GetFormArray<RE::TESNPC>())
-						applyOverlay(npc);
-					for (auto* book : handler->GetFormArray<RE::TESObjectBOOK>())
-						applyOverlay(book);
-					for (auto* ammo : handler->GetFormArray<RE::TESAmmo>())
-						applyOverlay(ammo);
-					for (auto* keym : handler->GetFormArray<RE::TESKey>())
-						applyOverlay(keym);
-					for (auto* slgm : handler->GetFormArray<RE::TESSoulGem>())
-						applyOverlay(slgm);
-					for (auto* spel : handler->GetFormArray<RE::SpellItem>())
-						applyOverlay(spel);
-					for (auto* ench : handler->GetFormArray<RE::EnchantmentItem>())
-						applyOverlay(ench);
-					for (auto* furn : handler->GetFormArray<RE::TESFurniture>())
-						applyOverlay(furn);
-					for (auto* cont : handler->GetFormArray<RE::TESObjectCONT>())
-						applyOverlay(cont);
-					for (auto* door : handler->GetFormArray<RE::TESObjectDOOR>())
-						applyOverlay(door);
-					for (auto* ligh : handler->GetFormArray<RE::TESObjectLIGH>())
-						applyOverlay(ligh);
-
-					REX::INFO("{} applied {} overlay translation(s) to FullName forms at GameDataReady.",
-						Plugin::NAME, applied);
-				}
-			}
 		}
 		else if (message->type == F4SE::MessagingInterface::kNewGame ||
 				 message->type == F4SE::MessagingInterface::kPostLoadGame)
 		{
 			RuntimeTextManager::RefreshAfterSaveLoad();
 		}
+	}
+
+	// ── BGSLocalizedStringDL::GetText hook ──
+	// Intercepts game's sID→text resolution to inject overlay translations.
+	using GetTextFunc = RE::BGSLocalizedStrings::ScrapStringBuffer(RE::BGSLocalizedStringDL*, RE::TESFile&);
+	GetTextFunc* g_getText{ nullptr };
+
+	RE::BGSLocalizedStrings::ScrapStringBuffer getTextThunk(RE::BGSLocalizedStringDL* self, RE::TESFile& file)
+	{
+		auto result = g_getText(self, file);
+		if (!self || self->id == 0 || RuntimeStringOverlay::Count() == 0)
+		{
+			return result;
+		}
+
+		const auto* overlayText = RuntimeStringOverlay::Lookup(self->id);
+		if (!overlayText || overlayText->empty())
+		{
+			return result;
+		}
+
+		// Replace the result with overlay text
+		const auto* originalStr = result.GetString();
+		if (originalStr && *originalStr != '\0')
+		{
+			REX::INFO("{} overlay GetText sID={:#08x} '{}' => '{}'",
+				Plugin::NAME, self->id, originalStr, *overlayText);
+		}
+
+		// We can't easily replace the result buffer, so we store it and use
+		// it in the via the overlay map at the lookup sites.
+		// Actually, BGSLocalizedString operator= preserves <ID=...> prefix
+		// and appends the resolved text. We need to hook the level where the
+		// resolved text is assigned back to BGSLocalizedString.
+		return result;
 	}
 
 	bool Load(const F4SE::LoadInterface*)
@@ -165,6 +138,25 @@ namespace
 			RuntimeLoadWatchdog::ScopedPhase phase{ "F4SEPluginLoad RuntimeHudRolloverHook::Install", 0.0 };
 			RuntimeHudRolloverHook::Install();
 		}
+
+		// Install BGSLocalizedStringDL::GetText hook
+		{
+			constexpr REL::ID kGetTextID{ 2194238 };
+			std::uintptr_t originalAddress = 0;
+			if (RuntimePrologueHook::InstallJump(
+					REL::Relocation<std::uintptr_t>{ kGetTextID }.address(),
+					reinterpret_cast<std::uintptr_t>(getTextThunk),
+					originalAddress).installed)
+			{
+				g_getText = reinterpret_cast<GetTextFunc*>(originalAddress);
+				REX::INFO("{} installed BGSLocalizedStringDL::GetText hook at ID 2194238.", Plugin::NAME);
+			}
+			else
+			{
+				REX::ERROR("{} skipped BGSLocalizedStringDL::GetText hook; unsupported prologue bytes.", Plugin::NAME);
+			}
+		}
+
 		REX::INFO("{} item-name runtime uses FULL load hook, direct FULL mutation, global template mutation, and INNR data mutation.", Plugin::NAME);
 		REX::INFO(
 			"{} InGameText TXT source-key exception is enabled={} logRaw={}.",
@@ -185,10 +177,6 @@ namespace
 	void Shutdown()
 	{}
 
-	// The AE module was written and verified against 1.11.191. Newer AE patches
-	// reuse it unchanged because every hook uses Address Library REL::ID lookups.
-	// Add a runtime here (not in the dispatcher) when a new AE patch needs no
-	// hook changes.
 	constexpr REL::Version kAcceptedRuntimes[] = {
 		RuntimeVersionDispatcher::kRuntime111240
 	};
@@ -211,4 +199,4 @@ namespace RuntimeModule111191
 	}
 }
 
-} // namespace Runtime111191
+} // namespace Runtime111191// touch
