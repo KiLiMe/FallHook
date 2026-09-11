@@ -1,0 +1,136 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      commonlibf4_ref:
+        description: 'CommonLibF4 分支 / tag / commit 用于发布构建'
+        required: false
+        default: 'main'
+        type: string
+
+env:
+  COMMONLIBF4_REF: ${{ github.event.inputs.commonlibf4_ref || 'main' }}
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-2022
+    env:
+      # 说明: job 级 env 的表达式只支持 github/needs/strategy/matrix/vars/secrets/inputs，
+      # 不能引用 runner.* 或 env.*（Unrecognized named-value），因此 VCPKG_ROOT 与
+      # VCPKG_BINARY_SOURCES 都在下方 "Locate vcpkg" 步骤里写入 $GITHUB_ENV。
+      COMMONLIBF4_DIR: ${{ github.workspace }}/../CommonLibF4
+
+    steps:
+      - name: Checkout FallHook
+        uses: actions/checkout@v7
+
+      - name: Set up MSBuild (Visual Studio 2022)
+        uses: microsoft/setup-msbuild@v3
+
+      - name: Cache CommonLibF4
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.COMMONLIBF4_DIR }}
+          key: commonlibf4-${{ runner.os }}-${{ env.COMMONLIBF4_REF }}
+          restore-keys: |
+            commonlibf4-${{ runner.os }}-
+
+      - name: Cache vcpkg deps (binary cache)
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/vcpkg_cache
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-${{ runner.os }}-
+
+      - name: Locate vcpkg and export VCPKG_ROOT
+        shell: pwsh
+        run: |
+          Write-Host "VCPKG_INSTALLATION_ROOT=$env:VCPKG_INSTALLATION_ROOT"
+          if (-not $env:VCPKG_INSTALLATION_ROOT) {
+            throw "vcpkg not found on runner (VCPKG_INSTALLATION_ROOT is empty)"
+          }
+          "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "VCPKG_ROOT exported -> $env:VCPKG_INSTALLATION_ROOT"
+          # vcpkg 二进制缓存目录：与上方 actions/cache 的 path 对齐（CMakePresets 已移除 -binarycaching）
+          $binCache = "$($env:RUNNER_TEMP -replace '\\','/')/vcpkg_cache"
+          "VCPKG_BINARY_SOURCES=clear;files,$binCache,readwrite" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "VCPKG_BINARY_SOURCES exported -> $binCache"
+
+      - name: Sync CommonLibF4 (incremental clone/refresh)
+        shell: pwsh
+        run: |
+          $dir = "$env:COMMONLIBF4_DIR"
+          $ref = "$env:COMMONLIBF4_REF"
+          Write-Host "CommonLibF4 ref: $ref"
+          Write-Host "CommonLibF4 dir: $dir"
+
+          function Test-CLReady {
+            (Test-Path "$dir/include/F4SE/F4SE.h") -and
+            (Test-Path "$dir/lib/commonlib-shared/include/REX/REX.h")
+          }
+
+          if (Test-CLReady) {
+            Write-Host "Cache hit -> refreshing existing checkout at $ref"
+            git -C $dir fetch --depth 1 origin $ref --tags --force 2>&1 | ForEach-Object { Write-Host $_ }
+            if ($LASTEXITCODE -eq 0) {
+              git -C $dir checkout --detach --force FETCH_HEAD 2>&1 | ForEach-Object { Write-Host $_ }
+              git -C $dir submodule update --init --recursive --depth 1 2>&1 | ForEach-Object { Write-Host $_ }
+            }
+            if ($LASTEXITCODE -ne 0 -or -not (Test-CLReady)) {
+              Write-Host "Refresh failed or incomplete -> full reclone"
+              Remove-Item -Recurse -Force $dir
+              git clone --depth 1 --recursive --branch $ref https://github.com/libxse/commonlibf4.git $dir
+            }
+          } else {
+            Write-Host "No cache -> full clone"
+            git clone --depth 1 --recursive --branch $ref https://github.com/libxse/commonlibf4.git $dir
+          }
+
+          Write-Host "Verifying CommonLibF4 layout:"
+          Write-Host "  F4SE.h        = $(Test-Path "$dir/include/F4SE/F4SE.h")"
+          Write-Host "  REX.h         = $(Test-Path "$dir/lib/commonlib-shared/include/REX/REX.h")"
+          if (-not (Test-CLReady)) { throw "CommonLibF4 layout incomplete after sync" }
+
+      - name: Configure (cmake --preset fo4)
+        shell: pwsh
+        run: |
+          Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
+          Write-Host "VCPKG_BINARY_SOURCES=$env:VCPKG_BINARY_SOURCES"
+          cmake --preset fo4
+
+      - name: Build FallHook.dll (Release)
+        shell: pwsh
+        run: cmake --build build --config Release --target FallHook
+
+      - name: Build and run unit tests
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --target FallHookCoreTests
+          ctest --test-dir build -C Release --output-on-failure
+
+      - name: Package release zip
+        shell: pwsh
+        run: |
+          # deploy/F4SE/Plugins/FallHook.dll 已由 POST_BUILD 生成
+          $plugins = Join-Path $env:GITHUB_WORKSPACE 'build\deploy\F4SE\Plugins'
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'config\FallHook.ini') `
+                    (Join-Path $plugins 'FallHook.ini') -Force
+          $staging = Join-Path $env:GITHUB_WORKSPACE 'build\deploy'
+          $zip = Join-Path $env:GITHUB_WORKSPACE "FallHook-$($env:GITHUB_REF_NAME).zip"
+          # 压缩 deploy\F4SE 目录，使压缩包内含 F4SE\Plugins\...
+          Compress-Archive -Path (Join-Path $staging 'F4SE') -DestinationPath $zip -Force
+          Write-Host "Created: $zip"
+          Get-Item $zip | Select-Object Name, Length
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: FallHook-${{ github.ref_name }}.zip
+          generate_release_notes: true
