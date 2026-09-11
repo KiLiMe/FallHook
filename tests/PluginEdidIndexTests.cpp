@@ -41,12 +41,14 @@ void testPluginEdidIndex()
 	FallHookTestSupport::appendVector(plugin, FallHookTestSupport::record("NPC_", 0x00001003, duplicateNpc));
 
 	std::vector<std::uint8_t> info;
-	std::vector<std::uint8_t> trdt(13, 0);
-	trdt[12] = 7;
-	FallHookTestSupport::appendVector(info, FallHookTestSupport::subrecord("TRDT", trdt));
+	// First INFO response: responseID=0 at offset 4, no responseID→index mapping
+	std::vector<std::uint8_t> trda1(13, 0);
+	FallHookTestSupport::appendVector(info, FallHookTestSupport::subrecord("TRDA", trda1));
 	FallHookTestSupport::appendVector(info, FallHookTestSupport::subrecord("NAM1", FallHookTestSupport::bytesU32(0x0000A001)));
-	trdt[12] = 9;
-	FallHookTestSupport::appendVector(info, FallHookTestSupport::subrecord("TRDT", trdt));
+	// Second INFO response: responseID=9 at offset 4 → maps to index 1
+	std::vector<std::uint8_t> trda2(13, 0);
+	trda2[4] = 0x09;
+	FallHookTestSupport::appendVector(info, FallHookTestSupport::subrecord("TRDA", trda2));
 	FallHookTestSupport::appendVector(info, FallHookTestSupport::subrecord("NAM1", FallHookTestSupport::bytesU32(0x0000A003)));
 	FallHookTestSupport::appendVector(info, FallHookTestSupport::subrecord("RNAM", FallHookTestSupport::bytesU32(0x0000A002)));
 	FallHookTestSupport::appendVector(plugin, FallHookTestSupport::record("INFO", 0x00001234, info));
