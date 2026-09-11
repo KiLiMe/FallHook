@@ -6,6 +6,7 @@
 #include "XmlLoadOrder.h"
 
 #include <algorithm>
+#include <string_view>
 
 namespace XmlLoadOrder
 {
@@ -41,5 +42,23 @@ namespace XmlLoadOrder
 		});
 
 		return order;
+	}
+
+	Mode ParseMode(std::string_view mode)
+	{
+		static constexpr std::pair<std::string_view, Mode> kModes[] = {
+			{ "filename", Mode::kFilename },
+			{ "plugin", Mode::kPlugin },
+		};
+
+		for (const auto& [key, val] : kModes)
+		{
+			if (mode == key)
+			{
+				return val;
+			}
+		}
+
+		return Mode::kPlugin;
 	}
 }

@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace XmlLoadOrder
@@ -27,4 +28,5 @@ namespace XmlLoadOrder
 	};
 
 	std::vector<std::size_t> SortIndices(std::span<const SortEntry> entries, Mode mode);
+	Mode ParseMode(std::string_view mode);
 }
