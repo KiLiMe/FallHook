@@ -44,7 +44,7 @@
     },
     {
       "name": "fo4",
-      "displayName": "Fallout 4 1.10.163 / 1.11.191",
+      "displayName": "Fallout 4 1.10.163 / 1.11.191 / 1.11.240",
       "inherits": [
         "common",
         "vcpkg",

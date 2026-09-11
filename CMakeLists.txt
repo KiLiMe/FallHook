@@ -249,10 +249,67 @@ set(FALLHOOK_RUNTIME_111191_SOURCES
     src/111191/RuntimeXdiDialogueOptionTranslations.cpp
 )
 
+set(FALLHOOK_RUNTIME_111240_SOURCES
+    src/111240/RuntimeActivationContextHook.cpp
+    src/111240/RuntimeActivationLookContext.cpp
+    src/111240/RuntimeActivationTextTranslations.cpp
+    src/111240/RuntimeActorValueAnamFixer.cpp
+    src/111240/RuntimeApplyTrace.cpp
+    src/111240/RuntimeCatalogProvider.cpp
+    src/111240/RuntimeConstApplyCache.cpp
+    src/111240/RuntimeDescriptionHook.cpp
+    src/111240/RuntimeDescriptionTranslations.cpp
+    src/111240/RuntimeDialogueDataApply.cpp
+    src/111240/RuntimeDialogueButtonHook.cpp
+    src/111240/RuntimeDialogueChoiceContext.cpp
+    src/111240/RuntimeDialogueChoiceTranslations.cpp
+    src/111240/RuntimeDialogueForms.cpp
+    src/111240/RuntimeDialogueResponseCandidates.cpp
+    src/111240/RuntimeDialogueResponseHook.cpp
+    src/111240/RuntimeDialogueResponseMap.cpp
+    src/111240/RuntimeDialogueResponseTranslations.cpp
+    src/111240/RuntimeDialogueSubtitleContext.cpp
+    src/111240/RuntimeDialogueSubtitleHook.cpp
+    src/111240/RuntimeDialogueSubtitleTranslations.cpp
+    src/111240/RuntimeFormResolver.cpp
+    src/111240/RuntimeFullNameLoadHook.cpp
+    src/111240/RuntimeFullNameLoadTranslations.cpp
+    src/111240/RuntimeHudRolloverActionPatch.cpp
+    src/111240/RuntimeHudRolloverHook.cpp
+    src/111240/RuntimeInGameTextHook.cpp
+    src/111240/RuntimeInGameTextHookPatch.cpp
+    src/111240/RuntimeInGameTextSafeCopy.cpp
+    src/111240/RuntimeInGameTextScaleformStream.cpp
+    src/111240/RuntimeInstanceNamingTranslations.cpp
+    src/111240/RuntimeInventoryTemplateNames.cpp
+    src/111240/RuntimeLocalizedStringID.cpp
+    src/111240/RuntimeModule111240.cpp
+    src/111240/RuntimePerkActivateChoiceTranslations.cpp
+    src/111240/RuntimePipboyLogHook.cpp
+    src/111240/RuntimePipboyLogTranslations.cpp
+    src/111240/RuntimePreload.cpp
+    src/111240/RuntimeQuestJournalTextHook.cpp
+    src/111240/RuntimeQuestLogTranslations.cpp
+    src/111240/RuntimeRaceText.cpp
+    src/111240/RuntimeRegionMapText.cpp
+    src/111240/RuntimeTextApply.cpp
+    src/111240/RuntimeTextIndexedLists.cpp
+    src/111240/RuntimeTextManager.cpp
+    src/111240/RuntimeTextReference.cpp
+    src/111240/RuntimeTextSimpleFields.cpp
+    src/111240/RuntimeTextStringAssign.cpp
+    src/111240/RuntimeTextTerminal.cpp
+    src/111240/RuntimeXdiDialogueInfoResolver.cpp
+    src/111240/RuntimeXdiDialogueMenuHook.cpp
+    src/111240/RuntimeXdiDialogueOptionResolver.cpp
+    src/111240/RuntimeXdiDialogueOptionTranslations.cpp
+)
+
 add_library(FallHook SHARED
     ${FALLHOOK_SHARED_PLUGIN_SOURCES}
     ${FALLHOOK_RUNTIME_110163_SOURCES}
     ${FALLHOOK_RUNTIME_111191_SOURCES}
+    ${FALLHOOK_RUNTIME_111240_SOURCES}
     "${CMAKE_CURRENT_BINARY_DIR}/FallHook.rc"
 )
 fallhook_apply_common_options(FallHook)

@@ -14,6 +14,7 @@ namespace RuntimeVersionDispatcher
 {
 	inline constexpr REL::Version kRuntime110163 = F4SE::RUNTIME_1_10_163;
 	inline constexpr REL::Version kRuntime111191 = F4SE::RUNTIME_1_11_191;
+	inline constexpr REL::Version kRuntime111240 = F4SE::RUNTIME_1_11_240;
 
 	struct Module
 	{

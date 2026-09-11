@@ -119,7 +119,7 @@ F4SEPluginVersion = []() noexcept {
 	data.AuthorName("FallHook"sv);
 	data.UsesAddressLibrary(true);
 	data.IsLayoutDependent(true);
-		data.CompatibleVersions({ RuntimeVersionDispatcher::kRuntime110163, RuntimeVersionDispatcher::kRuntime111191 });
+		data.CompatibleVersions({ RuntimeVersionDispatcher::kRuntime110163, RuntimeVersionDispatcher::kRuntime111191, RuntimeVersionDispatcher::kRuntime111240 });
 	return data;
 }();
 

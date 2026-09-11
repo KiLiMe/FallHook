@@ -9,12 +9,14 @@
 
 #include "110163/RuntimeModule110163.h"
 #include "111191/RuntimeModule111191.h"
+#include "111240/RuntimeModule111240.h"
 
 namespace
 {
 	const RuntimeVersionDispatcher::Module* const kModules[] = {
 		&RuntimeModule110163::GetModule(),
-		&Runtime111191::RuntimeModule111191::GetModule()
+		&Runtime111191::RuntimeModule111191::GetModule(),
+		&Runtime111240::RuntimeModule111240::GetModule()
 	};
 }
 
