@@ -5,6 +5,8 @@
 // Source-free policy: applies destination text from cached source-free identity maps; never matches Source text.
 #include "PCH.h"
 
+#include "RuntimeDebugTest.h"
+#include "111191/RuntimeTextStringAssign.h"
 #include "ConstApplyMap.h"
 #include "RuntimeLoadWatchdog.h"
 #include "111191/RuntimeApplyTrace.h"
@@ -95,6 +97,18 @@ namespace
 		std::string_view target,
 		std::uint32_t rawFormID)
 	{
+		if (RuntimeDebugTest::g_testAll.load(std::memory_order_acquire))
+		{
+			if (form)
+			{
+				if (auto* fullName = form->As<RE::TESFullName>())
+				{
+					RuntimeTextStringAssign::AssignPlainLocalized(fullName->fullName, "樊");
+				}
+			}
+			++stats.applied;
+			return;
+		}
 		if (!form)
 		{
 			RuntimeApplyTrace::Entry(settings, "skip-missing-form", target, rawFormID, entry);

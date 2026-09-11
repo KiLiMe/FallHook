@@ -1,4 +1,5 @@
 // AI CONTEXT: Loads [InGameTextHook] settings from FallHook.ini.
+// Also loads [Debug] section for test flags.
 // Depends on RuntimeInGameTextSettings and Win32 path discovery.
 // Runtime assumptions: version-neutral setting consumed only by the selected runtime module.
 // Version-specific logic: none; hook offsets and UI sites live in version modules.
@@ -6,6 +7,7 @@
 #include "PCH.h"
 
 #include "RuntimeInGameTextSettings.h"
+#include "RuntimeDebugTest.h"
 
 #include <Windows.h>
 
@@ -102,17 +104,26 @@ namespace RuntimeInGameTextSettings
 
 			const auto key = lower(trim(std::string_view{ text }.substr(0, equals)));
 			const auto value = trim(std::string_view{ text }.substr(equals + 1));
-			if (section != "ingametexthook")
+
+			if (section == "ingametexthook")
 			{
-				continue;
+				if (key == "enable" || key == "enablehook")
+				{
+					settings.enable = parseBool(value, settings.enable);
+				}
+				else if (key == "lograw")
+				{
+					settings.logRaw = parseBool(value, settings.logRaw);
+				}
 			}
-			if (key == "enable" || key == "enablehook")
+			else if (section == "debug")
 			{
-				settings.enable = parseBool(value, settings.enable);
-			}
-			else if (key == "lograw")
-			{
-				settings.logRaw = parseBool(value, settings.logRaw);
+				if (key == "testall")
+				{
+					settings.debugTestAll = parseBool(value, settings.debugTestAll);
+					RuntimeDebugTest::g_testAll.store(settings.debugTestAll, std::memory_order_release);
+					REX::INFO("{} [Debug] TestAll={}.", Plugin::NAME, settings.debugTestAll ? "enabled" : "disabled");
+				}
 			}
 		}
 

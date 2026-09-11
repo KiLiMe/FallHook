@@ -11,6 +11,7 @@
 #include "111191/RuntimeInventoryTemplateNames.h"
 #include "111191/RuntimeLocalizedStringID.h"
 #include "111191/RuntimeTextStringAssign.h"
+#include "RuntimeDebugTest.h"
 #include "SourceFreeTranslationKey.h"
 
 #include <atomic>
@@ -162,6 +163,19 @@ namespace
 		const std::vector<TemplateTranslation>& translations,
 		RuntimeInventoryTemplateNames::ApplyStats& stats)
 	{
+		if (RuntimeDebugTest::g_testAll.load(std::memory_order_acquire))
+		{
+			for (std::uint32_t i = 0; i < object.objectTemplate.items.size(); ++i)
+			{
+				auto* itemPtr = object.objectTemplate.items[i];
+				if (itemPtr)
+				{
+					RuntimeTextStringAssign::AssignPlainLocalized(itemPtr->fullName, "樊");
+				}
+			}
+			stats.applied += object.objectTemplate.items.size();
+			return;
+		}
 		const auto count = object.objectTemplate.items.size();
 		for (std::uint32_t index = 0; index < count; ++index)
 		{

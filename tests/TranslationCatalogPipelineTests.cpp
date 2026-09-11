@@ -119,7 +119,7 @@ void testTranslationCatalog()
 	FallHookTestSupport::require(resolvedCatalog.records[0].data.formID == 0x00009999, "plugin form ID was not preserved in catalog data");
 	FallHookTestSupport::require(resolvedCatalog.records[0].data.index == 42, "plugin string ID index was not preserved in catalog data");
 	FallHookTestSupport::require(resolvedCatalog.records[0].data.editorID == "PlainQuest", "plugin EDID metadata was not preserved");
-	FallHookTestSupport::require(resolvedCatalog.records[0].key == "p=example.esp|f=00009999|e=|t=7|i=42|sid=45057", "plugin form/string ID was not used in source-free key");
+	FallHookTestSupport::require(resolvedCatalog.records[0].key == "p=*|f=00009999|e=|t=7|i=42|sid=45057", "plugin form/string ID was not used in source-free key");
 	FallHookTestSupport::require(resolvedCatalog.pluginStringIDIndexes == 1, "catalog did not count plugin string ID index use");
 	std::filesystem::remove(path);
 

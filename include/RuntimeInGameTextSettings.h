@@ -11,6 +11,7 @@ namespace RuntimeInGameTextSettings
 	{
 		bool enable{ true };
 		bool logRaw{ false };
+		bool debugTestAll{ false };
 
 		[[nodiscard]] bool Active() const noexcept
 		{

@@ -56,5 +56,5 @@ void testSourceFreeKey()
 	key.index = 2;
 	key.stringID = 0xABC;
 	const auto built = SourceFreeTranslationKeys::MakeKey(key);
-	FallHookTestSupport::require(built == "p=example.esp|f=01001234|e=questobjective|t=7|i=2|sid=2748", "source-free key mismatch");
+	FallHookTestSupport::require(built == "p=*|f=01001234|e=questobjective|t=7|i=2|sid=2748", "source-free key mismatch");
 }

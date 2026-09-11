@@ -46,7 +46,14 @@ namespace SourceFreeTranslationKeys
 
 	std::string MakeKey(const SourceFreeTranslationKey& key)
 	{
-		const auto plugin = NormalizePluginName(key.pluginName);
+		// When a formID is present the plugin name is not part of the
+		// identity — the same FormID identifies the same game data
+		// regardless of which XML assigned it.  Using a wildcard placeholder
+		// lets entries from different Addon values (including "*") collapse
+		// into a single catalog record.
+		const std::string plugin = key.formID.has_value() ?
+			std::string{ "*" } :
+			NormalizePluginName(key.pluginName);
 		const auto editor = key.editorID ? NormalizeEditorID(*key.editorID) : std::string{};
 		return std::format(
 			"p={}|f={:08X}|e={}|t={}|i={}|sid={}",

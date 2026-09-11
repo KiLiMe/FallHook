@@ -12,6 +12,7 @@
 #include "111191/RuntimeInstanceNamingTranslations.h"
 #include "111191/RuntimeLocalizedStringID.h"
 #include "111191/RuntimeTextStringAssign.h"
+#include "RuntimeDebugTest.h"
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -289,6 +290,23 @@ namespace
 		std::uint32_t formID,
 		const std::vector<RuleTranslation>& entries)
 	{
+		if (RuntimeDebugTest::g_testAll.load(std::memory_order_acquire))
+		{
+			auto* rules = RE::TESForm::GetFormByID<RE::BGSInstanceNamingRules>(formID);
+			if (rules)
+			{
+				for (auto& set : rules->ruleSets)
+				{
+					for (auto& rule : set)
+					{
+						RuntimeTextStringAssign::AssignPlainLocalized(rule.text, "樊");
+					}
+				}
+			}
+			ApplyTotals totals;
+			totals.appliedRules = 1;
+			return totals;
+		}
 		ApplyTotals totals;
 		auto* rules = RE::TESForm::GetFormByID<RE::BGSInstanceNamingRules>(formID);
 		if (!rules)

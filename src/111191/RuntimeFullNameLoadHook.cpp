@@ -16,6 +16,7 @@
 #include "RuntimePrologueHook.h"
 #include "RuntimeSaveLoadGapTrace.h"
 #include "111191/RuntimeTextStringAssign.h"
+#include "RuntimeDebugTest.h"
 
 #include <atomic>
 #include <mutex>
@@ -182,6 +183,15 @@ namespace
 
 	void applyLoadedFullName(RE::TESFullName* fullName)
 	{
+		if (RuntimeDebugTest::g_testAll.load(std::memory_order_acquire))
+		{
+			if (RuntimeFullNameOwnerResolver::IsReadable(fullName, sizeof(RE::TESFullName)))
+			{
+				RuntimeTextStringAssign::AssignPlainLocalized(fullName->fullName, "樊");
+			}
+			return;
+		}
+	
 		if (!RuntimeFullNameOwnerResolver::IsReadable(fullName, sizeof(RE::TESFullName)))
 		{
 			g_stats.unreadable.fetch_add(1, std::memory_order_relaxed);
