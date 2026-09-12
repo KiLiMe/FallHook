@@ -58,7 +58,6 @@ struct TranslationPipelineResult
 	std::size_t skippedMissingPlugin{ 0 };
 	std::size_t loadedPluginIndexes{ 0 };
 	std::size_t failedPluginIndexes{ 0 };
-	std::size_t dedupSkippedEntries{ 0 };
 	bool loadedFromCache{ false };
 	bool savedCache{ false };
 };
