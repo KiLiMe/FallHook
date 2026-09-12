@@ -14,9 +14,42 @@
 #include <cctype>
 #include <memory>
 #include <optional>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+
+namespace
+{
+	struct DedupKey
+	{
+		std::string addon;
+		std::uint32_t formID;
+		std::string record;
+
+		bool operator==(const DedupKey& other) const
+		{
+			return addon == other.addon && formID == other.formID && record == other.record;
+		}
+	};
+
+	struct DedupKeyHash
+	{
+		std::size_t operator()(const DedupKey& key) const
+		{
+			std::size_t h = std::hash<std::string>{}(key.addon);
+			h ^= std::hash<std::uint32_t>{}(key.formID) + 0x9e3779b9 + (h << 6) + (h >> 2);
+			h ^= std::hash<std::string>{}(key.record) + 0x9e3779b9 + (h << 6) + (h >> 2);
+			return h;
+		}
+	};
+
+	std::optional<std::uint32_t> tryParseBracketFormID(std::string_view edid)
+	{
+		// [XXXXXXXX] → formID, 用于去重
+		return XmlTranslationMapping::ParseBracketFormID(edid);
+	}
+} // namespace
 
 namespace
 {
@@ -260,6 +293,47 @@ namespace TranslationPipeline
 			collectWantedSignatures(parsed.file, wantedByPlugin);
 			parsedFiles.push_back({ std::move(parsed.file), std::move(*plugin) });
 			++result.parsedXmlFiles;
+		}
+
+		// 去重：跨文件合并相同 (Addon, FormID, Record) 的条目，后者覆盖前者
+		{
+			const PipelinePhase phase{ options, "deduplicate entries across XML files" };
+			std::unordered_map<DedupKey, std::size_t, DedupKeyHash> dedupMap;
+			dedupMap.reserve(result.parsedXmlFiles * 100);
+
+			for (auto& parsed : parsedFiles)
+			{
+				std::vector<std::size_t> keep;
+				keep.reserve(parsed.file.entries.size());
+				for (std::size_t i = 0; i < parsed.file.entries.size(); ++i)
+				{
+					const auto& entry = parsed.file.entries[i];
+					auto formID = tryParseBracketFormID(entry.edid);
+					if (!formID)
+					{
+						keep.push_back(i);
+						continue;
+					}
+
+					DedupKey key{ parsed.plugin.name, *formID, entry.record };
+					auto [it, inserted] = dedupMap.insert({ std::move(key), i });
+					if (inserted)
+					{
+						keep.push_back(i);
+					}
+				}
+
+				if (keep.size() < parsed.file.entries.size())
+				{
+					std::vector<XmlTranslationEntry> filtered;
+					filtered.reserve(keep.size());
+					for (auto i : keep)
+					{
+						filtered.push_back(std::move(parsed.file.entries[i]));
+					}
+					parsed.file.entries = std::move(filtered);
+				}
+			}
 		}
 
 		std::unordered_map<std::string, PluginEdidIndex> pluginIndexes;
