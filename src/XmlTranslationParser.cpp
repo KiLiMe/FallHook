@@ -18,32 +18,6 @@
 
 namespace
 {
-	class ComInitializer
-	{
-	public:
-		ComInitializer()
-		{
-			m_result = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-		}
-
-		~ComInitializer()
-		{
-			if (SUCCEEDED(m_result))
-			{
-				CoUninitialize();
-			}
-		}
-
-		ComInitializer(const ComInitializer&) = delete;
-		ComInitializer& operator=(const ComInitializer&) = delete;
-
-		bool succeeded() const { return SUCCEEDED(m_result) || m_result == RPC_E_CHANGED_MODE; }
-		bool failed() const { return !succeeded(); }
-
-	private:
-		HRESULT m_result;
-	};
-
 	template <class T>
 	class ComPtr
 	{
@@ -283,23 +257,6 @@ namespace XmlTranslationParser
 	}
 
 	XmlParseResult ParseFile(const std::filesystem::path& path, std::string_view recordFilter)
-	{
-		ComInitializer com;
-		if (com.failed())
-		{
-			XmlParseResult result;
-			result.file.path = path;
-			result.error = "failed to initialize COM";
-			return result;
-		}
-
-		return ParseFileImpl(path, recordFilter);
-	}
-}
-
-namespace
-{
-	XmlParseResult ParseFileImpl(const std::filesystem::path& path, std::string_view recordFilter)
 	{
 		XmlParseResult result;
 		result.file.path = path;
