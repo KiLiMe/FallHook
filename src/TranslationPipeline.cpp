@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cctype>
 #include <memory>
+#include <future>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -271,13 +272,24 @@ namespace TranslationPipeline
 
 		std::vector<ParsedXml> parsedFiles;
 		std::unordered_map<std::string, std::unordered_set<std::uint32_t>> wantedByPlugin;
+
+		// 并行解析所有 XML 文件
+		std::vector<std::future<XmlParseResult>> xmlFutures;
+		xmlFutures.reserve(xmlFiles.size());
 		for (const auto& xmlPath : xmlFiles)
 		{
-			const PipelinePhase phase{ options, std::string{ "parse XML " } + xmlPath.filename().string() };
-			auto parsed = XmlTranslationParser::ParseFile(xmlPath);
+			xmlFutures.push_back(std::async(std::launch::async, [&xmlPath] {
+				return XmlTranslationParser::ParseFile(xmlPath);
+			}));
+		}
+
+		for (std::size_t i = 0; i < xmlFiles.size(); ++i)
+		{
+			const PipelinePhase phase{ options, std::string{ "resolve XML " } + xmlFiles[i].filename().string() };
+			auto parsed = xmlFutures[i].get();
 			if (!parsed.success)
 			{
-				result.errors.push_back({ xmlPath, parsed.error });
+				result.errors.push_back({ xmlFiles[i], parsed.error });
 				continue;
 			}
 
@@ -285,7 +297,7 @@ namespace TranslationPipeline
 			if (!plugin)
 			{
 				++result.skippedMissingPlugin;
-				result.errors.push_back({ xmlPath, "XML Addon is not an active or discoverable plugin" });
+				result.errors.push_back({ xmlFiles[i], "XML Addon is not an active or discoverable plugin" });
 				continue;
 			}
 
@@ -300,9 +312,12 @@ namespace TranslationPipeline
 			const PipelinePhase phase{ options, "deduplicate entries across XML files" };
 			std::unordered_map<DedupKey, std::size_t, DedupKeyHash> dedupMap;
 			dedupMap.reserve(result.parsedXmlFiles * 100);
+			std::size_t totalBefore = 0;
+			std::size_t totalAfter = 0;
 
 			for (auto& parsed : parsedFiles)
 			{
+				totalBefore += parsed.file.entries.size();
 				std::vector<std::size_t> keep;
 				keep.reserve(parsed.file.entries.size());
 				for (std::size_t i = 0; i < parsed.file.entries.size(); ++i)
@@ -333,7 +348,10 @@ namespace TranslationPipeline
 					}
 					parsed.file.entries = std::move(filtered);
 				}
+				totalAfter += parsed.file.entries.size();
 			}
+
+			result.dedupSkippedEntries = totalBefore - totalAfter;
 		}
 
 		std::unordered_map<std::string, PluginEdidIndex> pluginIndexes;
@@ -385,3 +403,4 @@ namespace TranslationPipeline
 		return result;
 	}
 }
+
