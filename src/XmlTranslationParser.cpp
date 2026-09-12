@@ -275,6 +275,12 @@ namespace
 	}
 }
 
+// 前向声明
+namespace
+{
+	XmlParseResult ParseFileImpl(const std::filesystem::path& path, std::string_view recordFilter);
+}
+
 namespace XmlTranslationParser
 {
 	XmlParseResult ParseFile(const std::filesystem::path& path)
